@@ -112,7 +112,9 @@ To open it whenever a UCRT64 shell starts, add this line to `~/.bashrc`:
 | `COPILOT_HOME_URL` | `https://m365.cloud.microsoft/chat` | Start page / new chat |
 | `COPILOT_ALLOWED_HOSTS` | Copilot hosts | Comma list accepted by `copilot_open` |
 | `COPILOT_MAX_SENDS` | `25` | Hard cap on prompts per server process (0 = unlimited), as a backstop against runaway loops |
-| `COPILOT_STABLE_SECONDS` | `4` | How long a reply must stay unchanged to count as finished |
+| `COPILOT_STABLE_SECONDS` | `4` | How long a reply must stay unchanged to count as finished. Lower it for faster answers; raise it if replies are cut off early |
+| `COPILOT_STATUS_SECONDS` | `20` | `copilot.sh` only: how often a progress line is printed while waiting |
+| `COPILOT_GIVE_UP_SECONDS` | `60` | `copilot.sh` only: stop waiting after this long with no reply detected at all |
 | `COPILOT_BRIDGE_DIR` | `~/.copilot-web-bridge` | Profile and state. Use a different one per concurrent Claude Code session, because a profile can only be open once |
 | `COPILOT_SELECTORS` | `./selectors.json` | Selector file |
 | `COPILOT_HEADLESS` | `0` | Leave off; sign-in needs a visible window |
