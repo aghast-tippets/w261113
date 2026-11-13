@@ -64,6 +64,12 @@ ALLOWED_HOSTS = {
 MAX_SENDS = int(os.environ.get("COPILOT_MAX_SENDS", "25"))
 # Seconds the reply text must stay unchanged (with no stop button) to count as done.
 STABLE_SECONDS = float(os.environ.get("COPILOT_STABLE_SECONDS", "4"))
+# Default timeouts for copilot_send / copilot_wait when the caller doesn't pass one.
+SEND_TIMEOUT = max(15, min(int(os.environ.get("COPILOT_SEND_TIMEOUT", "180")), 600))
+WAIT_TIMEOUT = max(5, min(int(os.environ.get("COPILOT_WAIT_TIMEOUT", "120")), 600))
+# Stop waiting early if no new reply at all has been detected after this long (the reply
+# selector probably doesn't match). 0 disables the early give-up.
+GIVE_UP_SECONDS = max(0.0, float(os.environ.get("COPILOT_GIVE_UP_SECONDS", "60")))
 
 DEFAULT_SELECTORS: dict[str, list[str]] = {
     "frame": [],
@@ -279,13 +285,19 @@ class Bridge:
         await composer.press("Enter")
         return "enter_key"
 
-    async def wait_for_reply(self, page: Page, timeout_seconds: float) -> dict:
+    async def wait_for_reply(
+        self, page: Page, timeout_seconds: float, give_up_seconds: float = 0
+    ) -> dict:
+        """Wait for the pending reply to finish. give_up_seconds > 0 returns early if no new
+        reply has been detected at all after that long."""
         assert self.pending is not None
         before_count = self.pending["before_count"]
         before_last = self.pending["before_last"]
-        deadline = time.monotonic() + timeout_seconds
+        started = time.monotonic()
+        deadline = started + timeout_seconds
         last_text: str | None = None
         stable_since: float | None = None
+        msgs: list[str] = []
         while time.monotonic() < deadline:
             await asyncio.sleep(1)
             if page.is_closed():
@@ -293,6 +305,20 @@ class Bridge:
             msgs = await self.assistant_texts(page)
             is_new = len(msgs) > before_count or (bool(msgs) and msgs[-1] != before_last)
             if not is_new:
+                if give_up_seconds and time.monotonic() - started >= give_up_seconds:
+                    return {
+                        "url": page.url,
+                        "response": None,
+                        "complete": False,
+                        "reason": "no_reply_detected",
+                        "error": (
+                            f"No new reply detected after {give_up_seconds:g}s: the "
+                            f"'assistant_message' selector matches {len(msgs)} element(s), "
+                            f"{before_count} before sending. If Copilot has answered in the "
+                            "browser, that selector is wrong: run copilot_inspect. Otherwise "
+                            "call copilot_wait. Do NOT resend the prompt."
+                        ),
+                    }
                 continue
             latest = msgs[-1]
             if latest != last_text:
@@ -311,6 +337,7 @@ class Bridge:
             "url": page.url,
             "response": last_text,
             "complete": False,
+            "reason": "timeout" if last_text is not None else "no_reply_detected",
             "error": (
                 "Timed out before the reply looked finished. Do NOT resend the prompt; "
                 "call copilot_wait to keep waiting, or copilot_read to see what is there."
@@ -350,6 +377,12 @@ async def copilot_status() -> dict:
             "selector_matches": counts,
             "sends_this_session": bridge.sends,
             "max_sends": MAX_SENDS or "unlimited",
+            "timings_seconds": {
+                "stable": STABLE_SECONDS,
+                "send_timeout": SEND_TIMEOUT,
+                "wait_timeout": WAIT_TIMEOUT,
+                "give_up": GIVE_UP_SECONDS or "disabled",
+            },
             "reply_pending": bridge.pending is not None,
         }
 
@@ -381,12 +414,14 @@ async def copilot_new_chat() -> dict:
 
 
 @mcp.tool()
-async def copilot_send(prompt: str, timeout_seconds: int = 180) -> dict:
+async def copilot_send(prompt: str, timeout_seconds: int | None = None) -> dict:
     """Type a prompt into the open Copilot conversation, submit it, and wait for the reply.
-    Returns {response, complete}. If complete is false, do NOT resend: call copilot_wait."""
+    timeout_seconds (15-600) defaults to the server's COPILOT_SEND_TIMEOUT. Returns
+    {response, complete, reason}. If complete is false, do NOT resend: call copilot_wait
+    (or copilot_inspect when reason is no_reply_detected)."""
     if not prompt.strip():
         raise ValueError("Prompt must not be empty.")
-    timeout_seconds = max(15, min(timeout_seconds, 600))
+    timeout_seconds = max(15, min(timeout_seconds or SEND_TIMEOUT, 600))
     async with bridge.lock:
         if MAX_SENDS and bridge.sends >= MAX_SENDS:
             raise RuntimeError(
@@ -407,20 +442,20 @@ async def copilot_send(prompt: str, timeout_seconds: int = 180) -> dict:
         await bridge.type_prompt(page, composer, prompt)
         method = await bridge.click_send(composer)
         bridge.sends += 1
-        result = await bridge.wait_for_reply(page, timeout_seconds)
+        result = await bridge.wait_for_reply(page, timeout_seconds, GIVE_UP_SECONDS)
         return {"prompt": prompt, "submitted_via": method, **result}
 
 
 @mcp.tool()
-async def copilot_wait(timeout_seconds: int = 120) -> dict:
-    """Keep waiting for the reply to the last prompt after copilot_send timed out.
-    Never resends anything."""
-    timeout_seconds = max(5, min(timeout_seconds, 600))
+async def copilot_wait(timeout_seconds: int | None = None) -> dict:
+    """Keep waiting for the reply to the last prompt after copilot_send returned incomplete.
+    timeout_seconds (5-600) defaults to the server's COPILOT_WAIT_TIMEOUT. Never resends."""
+    timeout_seconds = max(5, min(timeout_seconds or WAIT_TIMEOUT, 600))
     async with bridge.lock:
         if bridge.pending is None:
             return {"complete": True, "message": "Nothing pending. Use copilot_read."}
         page = await bridge.ensure()
-        return await bridge.wait_for_reply(page, timeout_seconds)
+        return await bridge.wait_for_reply(page, timeout_seconds, GIVE_UP_SECONDS)
 
 
 @mcp.tool()
