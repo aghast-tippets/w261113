@@ -85,7 +85,8 @@ async def inspect(page) -> None:
         inputs = [i for i in info.get("inputs", []) if i.get("visible")]
         if frame != page.main_frame and not (cands or inputs):
             continue
-        print(f"\nFrame: {frame.url[:100]}{'  (main page)' if frame == page.main_frame else '  (IFRAME: set \"frame\" in selectors.json)'}")
+        where = "  (main page)" if frame == page.main_frame else '  (IFRAME: set "frame" in selectors.json)'
+        print(f"\nFrame: {frame.url[:100]}{where}")
         for i in inputs[:5]:
             print("  input  ", {k: v for k, v in i.items() if v not in (None, True)})
         stops = [b for b in info.get("buttons", []) if "stop" in str(b).lower() or "send" in str(b).lower()]
