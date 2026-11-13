@@ -70,6 +70,25 @@ chat sits inside an iframe, set `"frame"` to that iframe's selector.
 
 The output contains page text, so treat it as sensitive.
 
+## Chat with Copilot without Claude
+
+`copilot.sh` opens a terminal chat. It uses the same Edge profile and `selectors.json` as the MCP server, so it doesn't need Claude Code or Claude credit.
+
+```bash
+./copilot.sh                                  # resume the last conversation
+./copilot.sh https://m365.cloud.microsoft/chat/<id>
+```
+
+Commands: `/open <url>`, `/new`, `/read`, `/url`, `/quit`. Anything else you type is sent to Copilot.
+
+Don't run it while Claude Code has `copilot-web` running. Both use the same browser profile, and only one can have it open at a time.
+
+To open it whenever a UCRT64 shell starts, add this line to `~/.bashrc`:
+
+```bash
+[[ $- == *i* && -z $COPILOT_STARTED ]] && export COPILOT_STARTED=1 && ~/w261113/copilot-web-bridge/copilot.sh
+```
+
 ## Tools
 
 | Tool | What it does |
