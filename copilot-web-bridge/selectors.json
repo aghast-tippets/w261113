@@ -1,0 +1,23 @@
+{
+  "_comment": "UNVERIFIED starting guesses. Run the copilot_inspect tool against your signed-in Copilot page and replace these. Each value is a list of CSS selectors (joined with ', '). Set 'frame' to the iframe's CSS selector if copilot_inspect shows the chat inside an iframe. Call copilot_reload_selectors after editing.",
+  "frame": [],
+  "composer": [
+    "#m365-chat-editor-target-element",
+    "[contenteditable=\"true\"][role=\"textbox\"]",
+    "[contenteditable=\"true\"][data-placeholder]",
+    "textarea[placeholder]"
+  ],
+  "send_button": [
+    "button[aria-label=\"Send\"]",
+    "button[data-testid=\"send-button\"]"
+  ],
+  "stop_button": [
+    "button[aria-label*=\"Stop generating\"]",
+    "button[aria-label*=\"Stop responding\"]"
+  ],
+  "assistant_message": [
+    "[data-message-author-role=\"assistant\"]",
+    "[data-testid=\"copilot-message-reply-div\"]",
+    "[data-testid=\"assistant-message\"]"
+  ]
+}
