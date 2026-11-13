@@ -4,15 +4,22 @@ No Claude Code (and no Claude credit) needed: you type, Copilot answers here.
 
   .venv/Scripts/python.exe chat.py [conversation-url]
 
-Commands: /open <url>  /new  /read  /url  /quit
+Commands: /open <url>  /new  /read  /url  /inspect  /reload  /quit
 Uses the same profile, selectors.json and environment variables as server.py.
 """
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
+import time
 
 from server import HOME_URL, bridge, check_url
+
+# How often to print a progress line while waiting (a finished reply is shown as soon as it
+# settles, regardless of this), and how long to wait with no reply detected before giving up.
+STATUS_SECONDS = max(1.0, float(os.environ.get("COPILOT_STATUS_SECONDS", "20")))
+GIVE_UP_SECONDS = max(STATUS_SECONDS, float(os.environ.get("COPILOT_GIVE_UP_SECONDS", "60")))
 
 HELP = ("Commands: /open <url>  /new  /read  /url  /inspect  /reload  /quit   "
         "(anything else is sent to Copilot)")
@@ -30,21 +37,20 @@ async def ask(prompt: str) -> None:
     await bridge.click_send(composer)
     print("… waiting for Copilot (Ctrl+C to give up)", flush=True)
     try:
-        nothing_seen = 0
+        started = time.monotonic()
         while True:
-            result = await bridge.wait_for_reply(page, 20)
+            result = await bridge.wait_for_reply(page, STATUS_SECONDS)
             if result["complete"]:
                 print(f"\nCopilot:\n{result['response']}\n", flush=True)
                 return
             matched = len(await bridge.assistant_texts(page))
             stop = await bridge.stop_visible(page)
             if result["response"] is None:
-                nothing_seen += 1
                 print(f"… no new reply detected: 'assistant_message' matches {matched} element(s) "
                       f"(was {bridge.pending['before_count']}).", flush=True)
-                if nothing_seen >= 3:
+                if time.monotonic() - started >= GIVE_UP_SECONDS:
                     bridge.pending = None
-                    print("\nGave up after 60s. If Copilot has answered in the Edge window, the "
+                    print(f"\nGave up after {GIVE_UP_SECONDS:g}s. If Copilot has answered in the Edge window, the "
                           "'assistant_message' selector doesn't match your Copilot page. "
                           "Run /inspect to find the right one.\n", flush=True)
                     return
