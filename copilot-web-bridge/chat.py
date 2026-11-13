@@ -14,7 +14,8 @@ import sys
 
 from server import HOME_URL, bridge, check_url
 
-HELP = "Commands: /open <url>  /new  /read  /url  /quit   (anything else is sent to Copilot)"
+HELP = ("Commands: /open <url>  /new  /read  /url  /inspect  /reload  /quit   "
+        "(anything else is sent to Copilot)")
 
 
 async def ask(prompt: str) -> None:
@@ -27,12 +28,70 @@ async def ask(prompt: str) -> None:
     bridge.pending = {"before_count": len(before), "before_last": before[-1] if before else None}
     await bridge.type_prompt(page, composer, prompt)
     await bridge.click_send(composer)
-    print("… waiting for Copilot", flush=True)
-    result = await bridge.wait_for_reply(page, 300)
-    while not result["complete"]:
-        print("… still waiting (Ctrl+C to stop)", flush=True)
-        result = await bridge.wait_for_reply(page, 120)
-    print(f"\nCopilot:\n{result['response']}\n", flush=True)
+    print("… waiting for Copilot (Ctrl+C to give up)", flush=True)
+    try:
+        nothing_seen = 0
+        while True:
+            result = await bridge.wait_for_reply(page, 20)
+            if result["complete"]:
+                print(f"\nCopilot:\n{result['response']}\n", flush=True)
+                return
+            matched = len(await bridge.assistant_texts(page))
+            stop = await bridge.stop_visible(page)
+            if result["response"] is None:
+                nothing_seen += 1
+                print(f"… no new reply detected: 'assistant_message' matches {matched} element(s) "
+                      f"(was {bridge.pending['before_count']}).", flush=True)
+                if nothing_seen >= 3:
+                    bridge.pending = None
+                    print("\nGave up after 60s. If Copilot has answered in the Edge window, the "
+                          "'assistant_message' selector doesn't match your Copilot page. "
+                          "Run /inspect to find the right one.\n", flush=True)
+                    return
+            elif stop:
+                print("… reply is arriving but the 'stop_button' selector still matches a visible "
+                      "button. If Copilot has finished, that selector is wrong (see /inspect).", flush=True)
+            else:
+                print("… reply still changing, waiting for it to settle", flush=True)
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        task = asyncio.current_task()
+        if task is not None and hasattr(task, "uncancel"):
+            task.uncancel()  # Ctrl+C cancels the main task; resume the chat loop instead
+        bridge.pending = None
+        print("\n(stopped waiting; /read shows whatever the selector currently finds)")
+
+
+async def inspect(page) -> None:
+    """Print what selectors.json matches and the page's likely message containers."""
+    from server import INSPECT_JS
+
+    root = bridge.root(page)
+    print("\nCurrent selector matches:")
+    for name, sel in bridge.sel.items():
+        if name != "frame" and sel:
+            print(f"  {name:18} {await root.locator(sel).count():3}  {sel}")
+    for frame in page.frames:
+        try:
+            info = await frame.evaluate(INSPECT_JS)
+        except Exception:
+            continue
+        cands = info.get("message_candidates") or []
+        inputs = [i for i in info.get("inputs", []) if i.get("visible")]
+        if frame != page.main_frame and not (cands or inputs):
+            continue
+        print(f"\nFrame: {frame.url[:100]}{'  (main page)' if frame == page.main_frame else '  (IFRAME: set \"frame\" in selectors.json)'}")
+        for i in inputs[:5]:
+            print("  input  ", {k: v for k, v in i.items() if v not in (None, True)})
+        stops = [b for b in info.get("buttons", []) if "stop" in str(b).lower() or "send" in str(b).lower()]
+        for b in stops[:6]:
+            print("  button ", {k: v for k, v in b.items() if v not in (None, False)})
+        print("  likely reply containers (selector, count, start of text):")
+        for c in cands[:25]:
+            sample = c["sample"].replace("\n", " ")[:70]
+            print(f"    {c['count']:3}  {c['selector']:55} {sample}")
+    print("\nPick the selector whose count equals the number of Copilot answers on screen and whose text "
+          "is Copilot's answer (not your question). Put it first under \"assistant_message\" in "
+          "selectors.json, then run /reload.\n")
 
 
 async def main() -> None:
@@ -64,6 +123,12 @@ async def main() -> None:
                 print(f"\nCopilot:\n{msgs[-1] if msgs else '(no replies found)'}\n")
             elif line == "/url":
                 print(page.url)
+            elif line == "/inspect":
+                await inspect(page)
+            elif line == "/reload":
+                from server import load_selectors
+                bridge.sel = load_selectors()
+                print("selectors.json reloaded")
             elif line.startswith("/"):
                 print(HELP)
             else:
