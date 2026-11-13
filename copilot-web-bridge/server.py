@@ -146,6 +146,16 @@ INSPECT_JS = r"""
       const t = (e.innerText || '').trim();
       if (t.length > slot.sample.length) slot.sample = t.slice(0, 160);
     }
+    if (typeof e.className === 'string') {
+      for (const c of e.className.split(/\s+/)) {
+        if (!c || c.length > 60 || !re.test(c)) continue;
+        const key = '.' + CSS.escape(c);
+        const slot = (msg[key] ||= { count: 0, sample: '' });
+        slot.count++;
+        const t = (e.innerText || '').trim();
+        if (t.length > slot.sample.length) slot.sample = t.slice(0, 160);
+      }
+    }
   }
   const message_candidates = Object.entries(msg)
     .filter(([, v]) => v.sample.length > 0)
