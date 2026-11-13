@@ -14,12 +14,12 @@ import os
 import sys
 import time
 
-from server import HOME_URL, bridge, check_url
+from server import GIVE_UP_SECONDS, HOME_URL, bridge, check_url
 
 # How often to print a progress line while waiting (a finished reply is shown as soon as it
-# settles, regardless of this), and how long to wait with no reply detected before giving up.
+# settles, regardless of this). The give-up time (COPILOT_GIVE_UP_SECONDS, 0 = never) is
+# shared with the MCP server.
 STATUS_SECONDS = max(1.0, float(os.environ.get("COPILOT_STATUS_SECONDS", "20")))
-GIVE_UP_SECONDS = max(STATUS_SECONDS, float(os.environ.get("COPILOT_GIVE_UP_SECONDS", "60")))
 
 HELP = ("Commands: /open <url>  /new  /read  /url  /inspect  /reload  /quit   "
         "(anything else is sent to Copilot)")
@@ -48,7 +48,7 @@ async def ask(prompt: str) -> None:
             if result["response"] is None:
                 print(f"… no new reply detected: 'assistant_message' matches {matched} element(s) "
                       f"(was {bridge.pending['before_count']}).", flush=True)
-                if time.monotonic() - started >= GIVE_UP_SECONDS:
+                if GIVE_UP_SECONDS and time.monotonic() - started >= GIVE_UP_SECONDS:
                     bridge.pending = None
                     print(f"\nGave up after {GIVE_UP_SECONDS:g}s. If Copilot has answered in the Edge window, the "
                           "'assistant_message' selector doesn't match your Copilot page. "
