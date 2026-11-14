@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fake Copilot (test double)</title>
+<style>
+  body { font: 14px system-ui, sans-serif; margin: 16px; }
+  [data-message-author-role] { margin: 8px 0; padding: 8px; border: 1px solid #ccc; white-space: pre-wrap; }
+  #composer-area { border-top: 2px solid #888; padding-top: 8px; }
+  #m365-chat-editor-target-element { min-height: 24px; border: 1px solid #888; padding: 4px; }
+  .chip { display: inline-block; margin: 2px; padding: 2px 6px; background: #eef; }
+  .toolbar { font-size: 11px; color: #666; }
+</style>
+</head>
+<body>
+<!--
+  A test double for the Microsoft 365 Copilot web UI. It is NOT a copy of Copilot: it only
+  reproduces the surfaces the bridge drives (composer, attach menu + file chooser, upload chips
+  with progress, send/stop buttons, streamed replies with images, links, download buttons and
+  code blocks). Every file it receives is hashed in the browser so tests can prove that the
+  bytes arrived intact. Query flags: ?static_input (file input present from the start),
+  ?upload_fail (silently ignore uploads).
+-->
+<div id="log"></div>
+<div id="composer-area">
+  <div id="chips"></div>
+  <div id="m365-chat-editor-target-element" contenteditable="true" role="textbox" aria-label="Message Copilot"></div>
+  <button id="attach" aria-label="Add content">+</button>
+  <div id="menu" role="menu" hidden><div role="menuitem" id="upload-item" tabindex="0">Upload from this device</div></div>
+  <button id="send" aria-label="Send">Send</button>
+</div>
+<script>
+const params = new URLSearchParams(location.search);
+const STATIC_INPUT = params.has('static_input'), UPLOAD_FAIL = params.has('upload_fail');
+const log = document.getElementById('log');
+const ed = document.getElementById('m365-chat-editor-target-element');
+const chipsEl = document.getElementById('chips');
+const sendBtn = document.getElementById('send');
+let attachments = [], uploading = 0;
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+const sha = async buf => hex(await crypto.subtle.digest('SHA-256', buf));
+const utf8 = s => new TextEncoder().encode(s);
+const isText = f => /\.(txt|csv|md|json|py)$/i.test(f.name);
+const textOf = f => new TextDecoder().decode(f.buf);
+const updateSend = () => { sendBtn.disabled = uploading > 0; };
+
+// ---- uploading -------------------------------------------------------------
+async function addFiles(files) {
+  if (UPLOAD_FAIL) return;  // simulate an upload that silently never happens
+  for (const f of files) {
+    uploading++; updateSend();
+    const chip = document.createElement('div');
+    chip.className = 'chip'; chip.setAttribute('data-testid', 'attachment-chip');
+    const bar = document.createElement('span'); bar.setAttribute('role', 'progressbar'); bar.textContent = ' uploading…';
+    chip.append(f.name, bar); chipsEl.append(chip);
+    const buf = await f.arrayBuffer();
+    const entry = { name: f.name, size: f.size, sha256: await sha(buf), buf };
+    await sleep(800);
+    bar.remove(); attachments.push(entry); uploading--; updateSend();
+  }
+}
+function makeInput() {
+  const i = document.createElement('input');
+  i.type = 'file'; i.multiple = true; i.style.display = 'none';
+  i.onchange = () => { const files = [...i.files]; if (!STATIC_INPUT) i.remove(); else i.value = ''; addFiles(files); };
+  return i;
+}
+if (STATIC_INPUT) { const i = makeInput(); i.id = 'static-file'; document.body.append(i); }
+document.getElementById('attach').onclick = () => { document.getElementById('menu').hidden = false; };
+document.getElementById('upload-item').onclick = () => {
+  document.getElementById('menu').hidden = true;
+  const i = makeInput(); document.body.append(i); i.click();
+};
+
+// ---- reading our proof image (digits drawn by transfer.digits_png) --------
+const GLYPHS = {
+  2: ['01110','10001','00001','00010','00100','01000','11111'],
+  3: ['11111','00010','00100','00010','00001','10001','01110'],
+  4: ['00010','00110','01010','10010','11111','00010','00010'],
+  5: ['11111','10000','11110','00001','00001','10001','01110'],
+  6: ['00110','01000','10000','11110','10001','10001','01110'],
+  7: ['11111','00001','00010','00100','01000','01000','01000'],
+  8: ['01110','10001','10001','01110','10001','10001','01110'],
+  9: ['01110','10001','10001','01111','00001','00010','01100'],
+};
+async function readDigits(buf) {
+  const bmp = await createImageBitmap(new Blob([buf], { type: 'image/png' }));
+  const c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height;
+  const g = c.getContext('2d'); g.drawImage(bmp, 0, 0);
+  const S = 16, M = 2, n = Math.round((bmp.width / S - 2 * M + 1) / 6);
+  let out = '';
+  for (let k = 0; k < n; k++) {
+    const rows = [];
+    for (let y = 0; y < 7; y++) {
+      let r = '';
+      for (let x = 0; x < 5; x++) {
+        const d = g.getImageData((M + k * 6 + x) * S + S / 2, (M + y) * S + S / 2, 1, 1).data;
+        r += d[0] < 128 ? '1' : '0';
+      }
+      rows.push(r);
+    }
+    const hit = Object.entries(GLYPHS).find(([, gl]) => gl.join() === rows.join());
+    out += hit ? hit[0] : '?';
+  }
+  return out;
+}
+
+// ---- reply building blocks -------------------------------------------------
+async function canvasImage(label) {
+  const c = document.createElement('canvas'); c.width = 160; c.height = 90;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, 160, 90);
+  g.fillStyle = '#c00'; g.beginPath(); g.arc(45, 45, 30, 0, 2 * Math.PI); g.fill();
+  g.fillStyle = '#000'; g.font = '14px sans-serif'; g.fillText(label, 85, 50);
+  const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+  return { blob, sha: await sha(await blob.arrayBuffer()), dataUrl: c.toDataURL('image/png') };
+}
+function img(src, alt) { const i = document.createElement('img'); i.src = src; i.alt = alt; return i; }
+function link(href, text, download) {
+  const a = document.createElement('a'); a.href = href; a.textContent = text;
+  if (download) a.setAttribute('download', download);
+  return a;
+}
+function downloadButton(name, blob) {
+  const b = document.createElement('button');
+  b.setAttribute('aria-label', 'Download ' + name); b.textContent = '⬇ ' + name;
+  b.onclick = () => { const a = link(URL.createObjectURL(blob), name, name); document.body.append(a); a.click(); a.remove(); };
+  return b;
+}
+function codeBlock(language, text) {
+  const wrap = document.createElement('div');
+  const bar = document.createElement('div'); bar.className = 'toolbar'; bar.textContent = language + ' ';
+  const copy = document.createElement('button'); copy.textContent = 'Copy'; copy.setAttribute('aria-label', 'Copy code');
+  bar.append(copy);
+  const pre = document.createElement('pre'); const code = document.createElement('code');
+  code.className = 'language-' + language; code.textContent = text; pre.append(code);
+  wrap.append(bar, pre);
+  return wrap;
+}
+function chartSvg() {
+  const ns = 'http://www.w3.org/2000/svg';
+  const s = document.createElementNS(ns, 'svg'); s.setAttribute('width', '200'); s.setAttribute('height', '120');
+  [[10, 60], [60, 90], [110, 30], [160, 75]].forEach(([x, h]) => {
+    const r = document.createElementNS(ns, 'rect');
+    r.setAttribute('x', x); r.setAttribute('y', 120 - h); r.setAttribute('width', 30); r.setAttribute('height', h);
+    r.setAttribute('fill', '#36c'); s.append(r);
+  });
+  return s;
+}
+function iconSvg() {  // like the small copy/like icons real replies carry: must be ignored
+  const ns = 'http://www.w3.org/2000/svg';
+  const s = document.createElementNS(ns, 'svg'); s.setAttribute('width', '16'); s.setAttribute('height', '16');
+  const c = document.createElementNS(ns, 'circle'); c.setAttribute('cx', 8); c.setAttribute('cy', 8); c.setAttribute('r', 6);
+  s.append(c); return s;
+}
+function csvSum(text) {
+  const rows = text.trim().split(/\r?\n/).slice(1).map(l => l.split(',').map(Number));
+  return ['a,b,sum', ...rows.map(([a, b]) => `${a},${b},${a + b}`)].join('\n') + '\n';
+}
+
+// ---- the "slave": deterministic answers --------------------------------------
+async function answer(q, files) {
+  const lines = [], extras = [];
+  const words = q.split(/\s+/), cmd = words[0], arg = words[1] || '', arg2 = words[2] || '';
+  if (files.length) {
+    lines.push(`Received ${files.length} file(s):`);
+    for (const f of files) lines.push(`FILE ${f.name} | ${f.size} | ${f.sha256}`);
+  }
+  let m;
+  if (/code word/i.test(q) && files.length) {                                  // live proof P2
+    const hit = files.filter(isText).map(textOf).join('\n').match(/CODE WORD:\s*(\S+)/);
+    lines.length = 0; lines.push(hit ? hit[1] : 'I could not find a code word.');
+  } else if (/number is shown/i.test(q) && files.length) {                      // live proof P3
+    lines.length = 0; lines.push(await readDigits(files.find(f => /\.png$/i.test(f.name)).buf));
+  } else if (/fenced code block/i.test(q) && /first line is/i.test(q)) {         // live proof P4
+    const parts = [...q.matchAll(/(?:first|second|third|fourth) line is `([^`]+)`/gi)].map(x => x[1]);
+    lines.length = 0; lines.push('Here you go:'); extras.push(() => codeBlock('text', parts.join('\n') + '\n'));
+  } else if (/sum = a \+ b/i.test(q) && files.length) {                          // live proof P5
+    lines.length = 0; lines.push('Here is the CSV:');
+    const text = csvSum(textOf(files.find(isText)));
+    extras.push(() => codeBlock('csv', text));
+  } else if (/^create an image/i.test(q)) {                                       // live proof P6
+    const im = await canvasImage('proof');
+    lines.push('Here is your image.'); extras.push(() => img(URL.createObjectURL(im.blob), 'generated image'));
+  } else if ((m = q.match(/downloadable text file named (\S+) whose entire content is the single line: ([A-Za-z0-9-]+)/i))) {
+    const blob = new Blob([utf8(m[2] + '\n')], { type: 'text/plain' });          // live proof P7
+    lines.push(`I created ${m[1]}.`); extras.push(() => downloadButton(m[1], blob));
+  } else if (cmd === 'MAKE-IMAGE') {
+    const im = await canvasImage(arg);
+    lines.push(`image-sha256: ${im.sha}`); extras.push(() => img(URL.createObjectURL(im.blob), 'image ' + arg));
+  } else if (cmd === 'MAKE-DATA-IMAGE') {
+    const im = await canvasImage(arg);
+    lines.push(`image-sha256: ${await sha(await (await fetch(im.dataUrl)).arrayBuffer())}`);
+    extras.push(() => img(im.dataUrl, 'data image'));
+  } else if (cmd === 'MAKE-PROTECTED-IMAGE') {
+    lines.push('Here is the protected image.'); extras.push(() => img('/protected/' + arg + '.png', 'protected'));
+  } else if (cmd === 'MAKE-CHART') {
+    lines.push('Here is a chart.'); extras.push(chartSvg);
+  } else if (cmd === 'MAKE-FILE') {
+    const bytes = utf8(`${arg2}\nsecond line ✓\n`);
+    lines.push(`file-sha256: ${await sha(bytes)}`);
+    extras.push(() => downloadButton(arg, new Blob([bytes], { type: 'text/plain' })));
+  } else if (cmd === 'MAKE-BLOB-LINK') {
+    const bytes = utf8(`blob link ${arg2}\n`);
+    lines.push(`file-sha256: ${await sha(bytes)}`);
+    extras.push(() => link(URL.createObjectURL(new Blob([bytes])), arg, arg));
+  } else if (cmd === 'MAKE-LINK-FILE') {
+    lines.push('File link:'); extras.push(() => link('/files/' + arg, arg));
+  } else if (cmd === 'MAKE-VIEWER-LINK') {
+    lines.push('Viewer link:'); extras.push(() => link('/viewer/' + arg, arg));
+  } else if (cmd === 'MAKE-PAGE-LINK') {
+    lines.push('See https docs:'); extras.push(() => link('/viewer/docs-page', 'documentation'));
+  } else if (cmd === 'MAKE-CODE') {
+    lines.push('Here is the code:');
+    extras.push(() => codeBlock('python',
+      `def proof():\n    value = "${arg}"\n    if value:\n        return value  # indented\n\treturn None\n`));
+  } else if (cmd === 'ECHO-UPPER') {
+    for (const f of files.filter(isText)) {
+      const bytes = utf8(textOf(f).toUpperCase());
+      lines.push(`upper-sha256 ${f.name}: ${await sha(bytes)}`);
+      extras.push(() => link(URL.createObjectURL(new Blob([bytes], { type: 'text/plain' })), 'UPPER-' + f.name, 'UPPER-' + f.name));
+    }
+  } else if (cmd === 'CSV-SUM') {
+    extras.push(() => codeBlock('csv', csvSum(textOf(files.find(isText)))));
+  }
+  if (!lines.length) lines.push('OK: ' + q);
+  return { text: lines.join('\n'), extras };
+}
+
+async function respond(q, files) {
+  const u = document.createElement('div'); u.setAttribute('data-message-author-role', 'user');
+  u.textContent = q + (files.length ? ` [${files.length} file(s)]` : ''); log.append(u);
+  const stop = document.createElement('button'); stop.setAttribute('aria-label', 'Stop generating'); stop.textContent = 'Stop';
+  document.body.append(stop);
+  const a = document.createElement('div'); a.setAttribute('data-message-author-role', 'assistant'); log.append(a);
+  const { text, extras } = await answer(q, files);
+  const p = document.createElement('p'); a.append(p);
+  const step = Math.max(1, Math.ceil(text.length / 8));
+  for (let i = step; i < text.length; i += step) { p.textContent = text.slice(0, i); await sleep(60); }
+  p.textContent = text;
+  for (const make of extras) { a.append(make()); await sleep(100); }
+  const tools = document.createElement('div'); tools.className = 'toolbar'; tools.append(iconSvg(), ' feedback'); a.append(tools);
+  await sleep(150);
+  stop.remove();
+}
+
+sendBtn.onclick = () => {
+  if (uploading) return;
+  const q = ed.innerText.trim(); if (!q) return;
+  ed.textContent = '';
+  const files = attachments; attachments = []; chipsEl.innerHTML = '';
+  respond(q, files);
+};
+ed.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendBtn.click(); } });
+</script>
+</body>
+</html>
