@@ -7,3 +7,5 @@ e32.dis
 flash.img
 tools/mkimage
 __pycache__/
+tests/gtest/build*/
+.pytest_cache/

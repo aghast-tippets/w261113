@@ -11,47 +11,55 @@ Last updated: 2026-11-14.
 
 | Phase | Gate | State | Evidence |
 |---|---|---|---|
-| 0 — Intake | Problem statement approved | Done (baseline) | [`../README.md`](../README.md), [`actors-and-roles.md`](actors-and-roles.md), [`epics.md`](epics.md) |
-| 1 — Requirements (EARS) | Requirements approved | Done (baseline): 226 requirements, 128 VER entries | [`requirements/`](requirements/) |
-| 2 — Behaviours (Gherkin) | Feature files approved | Done (baseline): 103 scenarios in 17 files | [`features/`](features/) |
-| 3 — Tests (red) | Suite runs red | **Not started.** Scenarios are checked by hand; there are no executable step definitions | — |
-| 4 — Implementation | Each scenario green | Firmware already exists. It was written before Phase 3, so tests will be retrofitted (see below) | source files in `..` |
-| 5 — Verification | Matrix audited both ways | Link checking automated: `python3 tools/tracecheck.py --check` passes (354 entries, 0 errors, 0 warnings) | [`traceability.md`](traceability.md) |
+| 0 — Intake | Problem statement approved | **Approved** (baseline, 2026-11-14) | [`../README.md`](../README.md), [`actors-and-roles.md`](actors-and-roles.md), [`epics.md`](epics.md) |
+| 1 — Requirements (EARS) | Requirements approved | **Approved** (baseline, 2026-11-14): 226 requirements, 128 VER entries | [`requirements/`](requirements/) |
+| 2 — Behaviours (Gherkin) | Feature files approved | **Approved** for the 103 baseline scenarios, now with IDs. **Awaiting approval:** 32 new unit-level scenarios in `features/unit/` | [`features/`](features/) |
+| 3 — Tests (red) | Suite runs red | **Awaiting confirmation.** Both suites are written. GoogleTest runs red against stubs (`-DE32_RED=ON`): 103 of 103 runnable tests fail on assertions, 2 skip (QEMU) | [`../tests/`](../tests/README.md) |
+| 4 — Implementation | Each scenario green | Firmware already exists. Against it, GoogleTest gives 103 passed, 2 skipped (QEMU). The pytest-bdd results are in the tests README | source files in `..` |
+| 5 — Verification | Matrix audited both ways | `python3 tools/tracecheck.py --check` passes. It now also checks scenario IDs and that every scenario has a test. VER statuses are not yet updated for the new evidence | [`traceability.md`](traceability.md) |
 
-"Baseline" means the artefacts arrived complete with the imported project
-and are taken as the approved Phase 0–2 output. The owner confirms or
-amends them at the Phase 3 gate.
+"Baseline" means the artefacts arrived complete with the imported project.
+The owner approved them as the Phase 0–2 output on 2026-11-14.
 
-Verification status today (from `traceability.md`): 64 Passed, 53 Partial,
-11 Pending. Scenario environment tags: 31 `@host`, 58 `@qemu`,
-15 `@hardware`, 29 `@pending`.
+## Test layers
+
+| Layer | Tool | What it covers | Test IDs |
+|---|---|---|---|
+| Gherkin binding | pytest-bdd (`tests/bdd`) | Every scenario in `features/*.feature`, executed from the feature text | `<scenario>-T01` |
+| Unit (TDD) | GoogleTest + GoogleMock (`tests/gtest/unit`) | Firmware C files compiled for the host, against a simulated SoC and a mocked register bus | `CMP_…_Snn_Tnn` |
+| Scenario (BDD) | GoogleTest (`tests/gtest/unit`) | Host scenarios from `features/*.feature` at component level (printf, lib, GPIO), steps marked with `GIVEN`/`WHEN`/`THEN` | `<scenario>_T02…` |
+| End to end | GoogleTest (`tests/gtest/e2e`) | `tools/mkimage` run as a process on crafted ELF files. The firmware booted in QEMU (skipped here) | `SW_IMG_…`, `IF_03_S01_T02`, `CMP_26_S01_T02` |
 
 ## Differences from the framework's conventions
 
-These are kept on purpose or are open decisions. None of them breaks the
-trace chain.
-
 1. **ID format.** The framework shows `SYS-001`; e32 uses `SYS-12`,
    `SUB-EXC-03`, `VER-SYS-07`. IDs are permanent, so they are not renumbered.
-2. **No scenario IDs.** The framework names scenarios `SYS-001-S01: …` and
-   tests `SYS-001-S01-T01`. e32 scenarios carry requirement and VER tags but
-   no scenario ID, and many tag several requirements. Open decision: which
-   tag owns the scenario ID (for example the lowest-level requirement tag).
-3. **Feature files by feature, not by level.** Files are grouped by feature
-   (`console.feature`), and a scenario's level is read from its tags rather
-   than from a `system/`, `unit/` folder.
-4. **Implementation before tests.** Phase 4 normally follows Phase 3. Here
-   the code exists, so Phase 3 tests must first be shown to fail for the
-   right reason (for example against a stubbed or broken build) before they
-   count as evidence.
+2. **Scenario owner.** Many scenarios are tagged with several requirements.
+   A scenario's ID is filed under its lowest-level tag (CMP over SW/HW/IF,
+   over SUB, over SYS, over STK); ties go to the first tag written.
+3. **Feature files by feature, not by level.** System-level files are
+   grouped by feature (`console.feature`). Only unit-level scenarios have
+   their own folder (`features/unit/`). The ID prefix shows each scenario's
+   level.
+4. **Implementation before tests.** The code predates the tests. "Red" is
+   therefore shown by linking the GoogleTest suite against empty stubs of
+   the same API (`tests/gtest/stubs`). That proves each test fails for want
+   of behaviour, not because of a build error.
+5. **Host build seams.** To compile the firmware for the host, its inline
+   assembly and register accesses sit behind `E32_HOST` in `types.h` and
+   `xtensa.h`. Four single-instruction `asm` statements in `io.c` and
+   `mimmo.c` became macros, and the `format(printf)` attributes in `io.h`
+   became `format(__printf__)`. Without `E32_HOST` they expand to the same
+   code, **but the target build has not been rebuilt** here because the
+   cross compiler is missing. Confirm with `make clean all` and the self
+   test in QEMU before relying on it.
 
-## Environment notes for Phase 3
+## Environment notes
 
-* The host build tools work here: `cc` builds `tools/mkimage`, and Python 3
-  runs `tools/tracecheck.py`. Python test packages install from PyPI.
-* The cross compiler (`xtensa-esp32-elf-gcc`) and Espressif QEMU are not
-  installed. Their GitHub release downloads are blocked by this cloud
-  environment's network policy, so `@qemu` scenarios cannot run here until
-  that host is allowed or the tools are built from source
-  (`tools/build-toolchain.sh`, about 30 minutes; also fetches from GitHub).
+* Here: host `cc`/`c++`, CMake, GoogleTest 1.14 and GoogleMock
+  (`libgtest-dev`, `libgmock-dev`), and Python 3 with pytest and pytest-bdd.
+* Missing: `xtensa-esp32-elf-gcc`, Espressif QEMU, esptool and a board.
+  The cloud environment's network policy blocks GitHub release downloads,
+  so `@qemu` scenarios and every scenario that needs the cross compiler
+  are skipped here, with the reason in the report.
 * `@hardware` scenarios need a physical board and stay manual.

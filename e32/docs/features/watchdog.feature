@@ -9,21 +9,21 @@ Feature: Watchdog control
   # with the same key protocol, before startup continues.
 
   @qemu @SYS-09 @SUB-BOOT-02 @SW-WDT-01 @IF-14 @CMP-14 @VER-SYS-07
-  Scenario: An armed watchdog is disabled at startup
+  Scenario: CMP-14-S01: An armed watchdog is disabled at startup
     Given a build variant that arms the TG0 watchdog (stage 0 = reset, 26,000,000 APB cycles) before "wdt_disable"
     When the firmware is booted in QEMU from flash
     And I wait 6 seconds
     Then the chip resets 1 times within 6 seconds
 
   @qemu @SYS-09 @VER-SYS-07
-  Scenario: Negative control: without wdt_disable the chip keeps resetting
+  Scenario: SYS-09-S01: Negative control: without wdt_disable the chip keeps resetting
     Given a build variant that arms the TG0 watchdog and does not call "wdt_disable"
     When the firmware is booted in QEMU from flash
     And I wait 6 seconds
     Then the chip resets 6 times within 6 seconds
 
   @hardware @pending @SYS-09 @VER-SYS-07 @VER-STK-10
-  Scenario: A board stays up
+  Scenario: SYS-09-S02: A board stays up
     Given the firmware is running on a board after a flash boot
     When I wait 600 seconds
     Then the console does not show "rst:"

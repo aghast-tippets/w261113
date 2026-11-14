@@ -5,7 +5,7 @@ Feature: Toolchain from source
   So that the exact toolchain can be reproduced anywhere
 
   @host @pending @SYS-25 @SUB-BLD-06 @SW-TC-01 @CMP-36 @VER-SYS-21 @VER-STK-02
-  Scenario: The script builds a working C toolchain
+  Scenario: CMP-36-S01: The script builds a working C toolchain
     Given a Linux host with git, gcc, g++, make, flex, bison, texinfo and the GMP, MPFR and MPC headers
     And an empty directory "/tmp/w"
     When I run "PREFIX=/tmp/tc WORK=/tmp/w tools/build-toolchain.sh"
@@ -17,7 +17,7 @@ Feature: Toolchain from source
     And the output does not contain "warning"
 
   @host @pending @CMP-36 @VER-SYS-21
-  Scenario: A second run does not clone again
+  Scenario: CMP-36-S02: A second run does not clone again
     Given the script has completed once in "/tmp/w"
     When I run "PREFIX=/tmp/tc WORK=/tmp/w tools/build-toolchain.sh"
     Then the output does not contain "Cloning into"

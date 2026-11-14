@@ -5,7 +5,7 @@ Feature: GPIO control
   So that I can exercise the board's wiring safely
 
   @hardware @pending @SYS-12 @SUB-GPIO-01 @SW-GPIO-03 @SW-GPIO-04 @VER-SYS-09 @VER-STK-06
-  Scenario Outline: Drive a GPIO output
+  Scenario Outline: SW-GPIO-03-S01: Drive a GPIO output
     Given the firmware is running on a board
     When I enter "p <gpio> <level>"
     Then the console shows "gpio <gpio> <- <level>"
@@ -19,7 +19,7 @@ Feature: GPIO control
       | 33   | 0     | ≤ 0.3 V  |
 
   @hardware @pending @SYS-13 @SW-GPIO-05 @VER-SYS-09
-  Scenario Outline: Read a GPIO input
+  Scenario Outline: SW-GPIO-05-S01: Read a GPIO input
     Given the firmware is running on a board
     And GPIO <gpio> is tied to <tie>
     When I enter "p <gpio>"
@@ -33,7 +33,7 @@ Feature: GPIO control
       | 36   | 3V3 | 1     |
 
   @hardware @pending @SW-GPIO-03 @SW-GPIO-04 @VER-SW-12
-  Scenario: Registers after driving GPIO2 high
+  Scenario: SW-GPIO-03-S02: Registers after driving GPIO2 high
     Given the firmware is running on a board
     When I enter "p 2 1"
     And I enter "r 3ff49040"
@@ -44,7 +44,7 @@ Feature: GPIO control
     Then bit 2 of the value is 1
 
   @qemu @SYS-12 @SYS-13 @SUB-GPIO-01 @VER-SYS-09
-  Scenario: GPIO command paths in the emulator
+  Scenario: SUB-GPIO-01-S01: GPIO command paths in the emulator
     Given the firmware is booted in QEMU from flash
     When I enter "p 2 1"
     Then the console shows "gpio 2 <- 1"
@@ -54,7 +54,7 @@ Feature: GPIO control
     Then the console shows "gpio 2: function 3"
 
   @qemu @SYS-14 @SUB-GPIO-02 @SW-GPIO-01 @SW-GPIO-02 @HW-07 @HW-08 @VER-SYS-10 @VER-STK-06
-  Scenario Outline: Refused pins
+  Scenario Outline: SW-GPIO-01-S01: Refused pins
     Given the firmware is booted in QEMU from flash
     When I enter "<command>"
     Then the console shows "<message>"
@@ -70,7 +70,7 @@ Feature: GPIO control
       | a 9 0   | invalid gpio or function                                |
 
   @host @pending @CMP-21 @CMP-22 @CMP-23 @VER-CMP-12
-  Scenario: GPIO unit test against a fake register file
+  Scenario: CMP-21-S01: GPIO unit test against a fake register file
     Given gpio.c compiled for the host with readl and writel recording into an array
     When I call gpio_dir_af(7, 1, 1, 0)
     Then it returns -1

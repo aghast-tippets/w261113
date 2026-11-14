@@ -108,6 +108,20 @@ All requirement files use the same machine-readable layout, which
 Feature files tag each scenario with the requirement IDs it exercises and
 the `VER` entry it belongs to, for example `@SYS-12 @VER-SYS-09`.
 
+Every scenario also has a permanent ID in its name, `<REQ>-Snn`, filed
+under the lowest-level requirement it is tagged with, so the prefix gives
+its level:
+
+    @qemu @SYS-14 @SUB-GPIO-02 @SW-GPIO-01 @HW-07 @VER-SYS-10
+    Scenario Outline: SW-GPIO-01-S01: Refused pins
+
+Each test carries the ID of the scenario it implements plus a test number,
+`<REQ>-Snn-Tnn`. For a scenario in `features/*.feature`, T01 is its
+pytest-bdd binding (`tests/bdd`). Further tests, and every test of a
+unit-level scenario in `features/unit/`, are GoogleTest tests in
+`tests/gtest`, named with underscores (`CMP_21_S01_T02_…`). See
+[`../tests/README.md`](../tests/README.md).
+
 ## Checking traceability
 
     python3 tools/tracecheck.py           # check links, rewrite traceability.md
@@ -121,6 +135,10 @@ The checker fails when any of these is true:
 * A requirement has no verification.
 * A `VER` entry lacks a method.
 * A feature-file tag names an unknown ID.
+* A scenario has no ID, a duplicate ID, or an ID whose requirement it is
+  not tagged with.
+* A scenario has no test, a test names an unknown scenario, or a
+  GoogleTest test takes the T01 reserved for a pytest-bdd binding.
 
 It warns about parents with no children and about `VER` entries that point
 to scenarios that don't exist.

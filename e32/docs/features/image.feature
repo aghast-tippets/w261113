@@ -5,7 +5,7 @@ Feature: Boot image generation
   So that I can load or flash the build output directly
 
   @host @IF-01 @SUB-BLD-04 @SW-IMG-03 @SW-IMG-06 @CMP-33 @VER-SUB-03 @VER-CMP-18
-  Scenario: A valid image is decoded by an independent implementation
+  Scenario: CMP-33-S01: A valid image is decoded by an independent implementation
     Given the firmware is built
     When I run "esptool --chip esp32 image-info e32.bin"
     Then the output contains "Segments: 2"
@@ -15,7 +15,7 @@ Feature: Boot image generation
     And segment 1 is loaded at 0x40080000 with memory type "IRAM"
 
   @host @SW-IMG-04 @VER-CMP-18
-  Scenario Outline: Header bytes are as specified
+  Scenario Outline: SW-IMG-04-S01: Header bytes are as specified
     Given the firmware is built
     When I read byte <offset> of "e32.bin"
     Then its value is <value>
@@ -33,13 +33,13 @@ Feature: Boot image generation
       | 23     | 0x00  | no SHA-256 appended      |
 
   @host @SW-IMG-05 @VER-CMP-18
-  Scenario: The checksum is the last byte of a 16-byte block
+  Scenario: SW-IMG-05-S01: The checksum is the last byte of a 16-byte block
     Given the firmware is built
     Then the size of "e32.bin" is a multiple of 16
     And its last byte equals 0xef XOR every segment data byte
 
   @host @SW-IMG-01 @SW-IMG-02 @VER-CMP-18
-  Scenario Outline: Invalid input is rejected
+  Scenario Outline: SW-IMG-01-S01: Invalid input is rejected
     When I run "./tools/mkimage <arguments>"
     Then the exit status is 1
     And the output contains "<message>"
@@ -52,7 +52,7 @@ Feature: Boot image generation
       | /nonexistent /tmp/x.bin     | No such file or directory     |
 
   @host @pending @SW-IMG-03 @VER-CMP-18
-  Scenario Outline: Unloadable ELF files are rejected
+  Scenario Outline: SW-IMG-03-S01: Unloadable ELF files are rejected
     Given an Xtensa ELF file "<file>" crafted with <defect>
     When I run "./tools/mkimage <file> /tmp/x.bin"
     Then the exit status is 1
@@ -65,7 +65,7 @@ Feature: Boot image generation
       | truncated.elf | a segment extending past the end of file  | past end of file       |
 
   @qemu @HW-11 @SYS-04 @VER-SUB-03
-  Scenario: The real boot ROM accepts the image
+  Scenario: HW-11-S02: The real boot ROM accepts the image
     Given the firmware is booted in QEMU from flash
     Then the console shows "load:0x3ffb0000"
     And the console shows "load:0x40080000"
