@@ -1,0 +1,9 @@
+# build outputs (see `make clean`)
+*.o
+e32.elf
+e32.bin
+e32.map
+e32.dis
+flash.img
+tools/mkimage
+__pycache__/
