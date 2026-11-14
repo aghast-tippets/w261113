@@ -29,6 +29,8 @@ from:
    evidence for the `Test` method.
 7. [`traceability.md`](traceability.md): the generated matrix linking every
    requirement to its parent, children, verification and scenarios.
+8. [`test-results.md`](test-results.md): the generated outcome of every
+   scenario and requirement in the last `tests/run_all.sh`.
 
 ## Requirement types
 
