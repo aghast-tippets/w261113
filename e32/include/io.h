@@ -20,11 +20,11 @@ extern void udelay(u32 usecs);
 
 /* pp_printf.c -- "printf" is an alias provided by the linker script */
 extern int pp_printf(const char *fmt, ...)
-	__attribute__((format(printf, 1, 2)));
+	__attribute__((format(__printf__, 1, 2)));
 extern int pp_sprintf(char *buf, const char *fmt, ...)
-	__attribute__((format(printf, 2, 3)));
+	__attribute__((format(__printf__, 2, 3)));
 extern int printf(const char *fmt, ...)
-	__attribute__((format(printf, 1, 2)));
+	__attribute__((format(__printf__, 1, 2)));
 
 /* mimmo.c */
 extern void mimmo(void);

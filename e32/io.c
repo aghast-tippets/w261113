@@ -101,7 +101,7 @@ int getc(void)
 		flags = irq_save();
 		if (rx_head != rx_tail)
 			break;
-		asm volatile ("waiti 0" ::: "memory");
+		cpu_waiti0();
 	}
 	c = rxbuf[rx_tail++ % RXBUF_SIZE];
 	irq_restore(flags);

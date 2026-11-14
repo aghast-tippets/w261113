@@ -9,6 +9,22 @@ carry tags for:
 * the environment: `@host` (build machine only), `@qemu` (emulator with the
   real boot ROM), or `@hardware` (physical board needed).
 
+Each scenario's name starts with its ID, `<REQ>-Snn` (see
+[`README.md`](README.md#entry-format)).
+
+Unit-level (`CMP`) scenarios for the C components live in
+[`features/unit/`](features/unit/). These four files reuse the feature IDs
+of the system-level files they refine. Their scenarios run on the host
+against a simulated SoC, implemented by the GoogleTest suite in
+[`../tests/gtest`](../tests/gtest):
+
+| File | Components | Feature |
+|---|---|---|
+| [unit/io.feature](features/unit/io.feature) | `io.c` | F-06 |
+| [unit/irq_timer_wdt.feature](features/unit/irq_timer_wdt.feature) | `irq.c`, `timer.c`, `wdt.c` | F-12 |
+| [unit/monitor_panic_main.feature](features/unit/monitor_panic_main.feature) | `mimmo.c`, `panic.c`, `main.c` | F-08 |
+| [unit/gpio_lib_printf.feature](features/unit/gpio_lib_printf.feature) | `gpio.c`, `lib.c`, `pp_printf.c` | F-09 |
+
 | ID | Feature | Epic | File | Main requirements | Environments |
 |---|---|---|---|---|---|
 | F-01 | Build from source | EP-01 | [build.feature](features/build.feature) | SYS-01, SYS-02, SYS-03 | host |

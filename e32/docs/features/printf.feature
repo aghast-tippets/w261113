@@ -8,7 +8,7 @@ Feature: Formatted output
   # and pp_sprintf is compared with the C library's snprintf.
 
   @host @SUB-CON-04 @SW-FMT-01 @SW-FMT-02 @CMP-19 @CMP-20 @VER-CMP-11 @VER-SUB-14
-  Scenario Outline: pp_sprintf matches ISO C for the supported subset
+  Scenario Outline: CMP-19-S01: pp_sprintf matches ISO C for the supported subset
     Given pp_printf.c compiled for the host
     When I format <format> with <arguments>
     Then pp_sprintf produces the same string as snprintf
@@ -28,7 +28,7 @@ Feature: Formatted output
       | "%-3c\|"               | 'a'                           |
 
   @host @pending @SW-FMT-01 @VER-CMP-11
-  Scenario Outline: Cases that differ from or extend ISO C
+  Scenario Outline: SW-FMT-01-S01: Cases that differ from or extend ISO C
     Given pp_printf.c compiled for the host
     When I format <format> with <arguments>
     Then the result is <result>
@@ -42,7 +42,7 @@ Feature: Formatted output
       | "abc%"  | none       | "abc"          |
 
   @qemu @SW-FMT-01 @SW-FMT-02 @VER-SUB-14
-  Scenario: Pointer and padded formats on the target
+  Scenario: SW-FMT-01-S02: Pointer and padded formats on the target
     When the firmware is booted in QEMU from flash
     Then the console shows "stack top 0x3ffdc000"
     When I enter "f 0"
