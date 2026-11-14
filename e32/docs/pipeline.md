@@ -15,7 +15,7 @@ Last updated: 2026-11-14.
 | 1 — Requirements (EARS) | Requirements approved | **Approved** (baseline, 2026-11-14): 226 requirements, 128 VER entries | [`requirements/`](requirements/) |
 | 2 — Behaviours (Gherkin) | Feature files approved | **Approved** for the 103 baseline scenarios, now with IDs. **Awaiting approval:** 32 new unit-level scenarios in `features/unit/` | [`features/`](features/) |
 | 3 — Tests (red) | Suite runs red | **Awaiting confirmation.** Both suites are written. GoogleTest runs red against stubs (`-DE32_RED=ON`): 103 of 103 runnable tests fail on assertions, 2 skip (QEMU) | [`../tests/`](../tests/README.md) |
-| 4 — Implementation | Each scenario green | Firmware already exists. Against it, GoogleTest gives 103 passed, 2 skipped (QEMU). The pytest-bdd results are in the tests README | source files in `..` |
+| 4 — Implementation | Each scenario green | Firmware already exists. Against it, GoogleTest gives 103 passed, 2 skipped (QEMU). pytest-bdd (190 tests after Examples expansion) gives 38 passed, 3 failed `PENDING automation` (toolchain script: STK-02-S01, CMP-36-S01, CMP-36-S02), 150 skipped (QEMU, board or cross compiler missing) | source files in `..` |
 | 5 — Verification | Matrix audited both ways | `python3 tools/tracecheck.py --check` passes. It now also checks scenario IDs and that every scenario has a test. VER statuses are not yet updated for the new evidence | [`traceability.md`](traceability.md) |
 
 "Baseline" means the artefacts arrived complete with the imported project.
