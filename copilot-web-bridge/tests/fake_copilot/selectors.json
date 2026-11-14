@@ -1,0 +1,16 @@
+{
+  "_comment": "Selectors for the fake Copilot test page (tests/fake_copilot/index.html), not for real Copilot.",
+  "frame": [],
+  "composer": ["#m365-chat-editor-target-element"],
+  "send_button": ["button[aria-label=\"Send\"]"],
+  "stop_button": ["button[aria-label=\"Stop generating\"]"],
+  "assistant_message": ["[data-message-author-role=\"assistant\"]"],
+  "file_input": ["input[type=\"file\"]"],
+  "attach_steps": [
+    "button[aria-label=\"Add content\"]",
+    "[role=\"menuitem\"]:has-text(\"Upload from this device\")"
+  ],
+  "attachment_chip": ["[data-testid=\"attachment-chip\"]"],
+  "upload_busy": ["[role=\"progressbar\"]"],
+  "download_button": ["button[aria-label^=\"Download\"]"]
+}

@@ -1,5 +1,6 @@
 {
-  "_comment": "UNVERIFIED starting guesses. Run the copilot_inspect tool against your signed-in Copilot page and replace these. Each value is a list of CSS selectors (joined with ', '). Set 'frame' to the iframe's CSS selector if copilot_inspect shows the chat inside an iframe. Call copilot_reload_selectors after editing.",
+  "_comment": "UNVERIFIED starting guesses. Run the copilot_inspect tool (or /inspect in copilot.sh) against your signed-in Copilot page and replace these. Each value is a list of CSS selectors (joined with ', '), except attach_steps, which is a sequence of clicks. Set 'frame' to the iframe's CSS selector if inspect shows the chat inside an iframe. Call copilot_reload_selectors (or /reload) after editing.",
+  "_files_comment": "file_input: a hidden <input type=file> used directly if present. attach_steps: otherwise, the clicks that open the file picker (e.g. the + button, then 'Upload from this device'). attachment_chip: the element that appears per attached file; when set, prompts are only sent once that many chips show (leave empty to wait COPILOT_UPLOAD_SETTLE_SECONDS instead). upload_busy: shown while uploading. download_button: Download buttons inside replies.",
   "frame": [],
   "composer": [
     "#m365-chat-editor-target-element",
@@ -19,5 +20,19 @@
     "[data-message-author-role=\"assistant\"]",
     "[data-testid=\"copilot-message-reply-div\"]",
     "[data-testid=\"assistant-message\"]"
+  ],
+  "file_input": [
+    "input[type=\"file\"]"
+  ],
+  "attach_steps": [
+    "button[aria-label*=\"Add content\"], button[aria-label*=\"Attach\"], button[aria-label*=\"Upload\"], button[aria-label*=\"Add a file\"]",
+    "[role=\"menuitem\"]:has-text(\"Upload from this device\"), [role=\"menuitem\"]:has-text(\"Upload\")"
+  ],
+  "attachment_chip": [],
+  "upload_busy": [
+    "[role=\"progressbar\"]"
+  ],
+  "download_button": [
+    "button[aria-label*=\"Download\"]"
   ]
 }
