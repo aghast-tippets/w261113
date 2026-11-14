@@ -131,13 +131,13 @@ static void fault(int n)
 		printf("%08x\n", *(volatile u32 *)zero);
 		break;
 	case 1:
-		asm volatile ("ill");
+		cpu_ill();
 		break;
 	case 2:
 		printf("%i\n", hundred / zero);
 		break;
 	case 3:
-		asm volatile ("break 1, 15");
+		cpu_break();
 		break;
 	case 4:
 		/*
@@ -145,7 +145,7 @@ static void fault(int n)
 		 * interrupt entry stores its frame there while PS.EXCM is
 		 * set, which is a double exception.
 		 */
-		asm volatile ("movi a1, 0x100\n1: j 1b");
+		cpu_bad_sp();
 		break;
 	case 5:
 		/* Software interrupt 29 is level 3: no handler level exists */

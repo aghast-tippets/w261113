@@ -5,7 +5,7 @@ Feature: Boot paths
   So that I can iterate quickly and still ship a self-starting board
 
   @qemu @SYS-04 @SUB-BOOT-01 @HW-11 @VER-SYS-02 @VER-STK-03 @VER-SUB-06
-  Scenario: Flash boot through the ROM
+  Scenario: HW-11-S01: Flash boot through the ROM
     Given the firmware is built
     And "flash.img" holds e32.bin at offset 0x1000
     When the firmware is booted in QEMU from flash
@@ -15,7 +15,7 @@ Feature: Boot paths
     And the monitor prompt is shown
 
   @qemu @SYS-05 @SYS-27 @IF-04 @VER-SYS-03 @VER-STK-03
-  Scenario: RAM boot through ROM download mode
+  Scenario: IF-04-S01: RAM boot through ROM download mode
     Given QEMU is started in download mode with the console on TCP port 5556
     When I run "esptool --chip esp32 -p socket://localhost:5556 --no-stub --before no-reset --after no-reset load-ram e32.bin"
     Then the output contains "Loaded 2 segments from 'e32.bin' to RAM"
@@ -23,7 +23,7 @@ Feature: Boot paths
     Then the console shows "all ok"
 
   @hardware @pending @SYS-26 @SW-BLD-03 @VER-SYS-04
-  Scenario: Flash with make flash on a board
+  Scenario: SW-BLD-03-S01: Flash with make flash on a board
     Given a board in download mode on PORT
     When I run "make flash PORT=/dev/ttyUSB0"
     Then the command succeeds
@@ -33,20 +33,20 @@ Feature: Boot paths
     Then the monitor prompt is shown
 
   @hardware @pending @SYS-27 @SW-BLD-03 @VER-SYS-04
-  Scenario: RAM with make ram on a board
+  Scenario: SW-BLD-03-S02: RAM with make ram on a board
     Given a board in download mode on PORT
     When I run "make ram PORT=/dev/ttyUSB0"
     Then the command succeeds
     And the monitor prompt is shown
 
   @qemu @SUB-BOOT-03 @SW-CON-01 @CMP-18 @VER-SUB-08
-  Scenario: The ROM's last line is not mixed with the banner
+  Scenario: CMP-18-S01: The ROM's last line is not mixed with the banner
     When the firmware is booted in QEMU from flash
     Then the console shows a line matching /^entry 0x[0-9a-f]{8}$/
     And the next non-empty line starts with "e32: bare-metal ESP32"
 
   @qemu @IF-02 @IF-16 @SUB-VEN-01 @VER-SUB-19
-  Scenario Outline: The firmware works after either ROM hand-over
+  Scenario Outline: IF-02-S01: The firmware works after either ROM hand-over
     Given the firmware is <loaded>
     When I enter "s"
     Then the console shows "all ok"
@@ -57,7 +57,7 @@ Feature: Boot paths
       | loaded into RAM in QEMU download mode            |
 
   @host @SYS-23 @HW-09 @HW-10 @VER-SYS-19
-  Scenario: Firmware runs from internal SRAM only
+  Scenario: HW-09-S01: Firmware runs from internal SRAM only
     Given the firmware is built
     When I run "esptool --chip esp32 image-info e32.bin"
     Then every segment lies in 0x3ffb0000-0x3ffdbfff or 0x40080000-0x4009ffff

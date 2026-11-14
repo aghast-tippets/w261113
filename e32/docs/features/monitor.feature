@@ -9,7 +9,7 @@ Feature: Memory monitor
     And the monitor prompt is shown
 
   @qemu @SYS-10 @SW-MON-02 @VER-SYS-08 @VER-STK-05
-  Scenario: Help lists every command
+  Scenario: SW-MON-02-S01: Help lists every command
     When I enter "h"
     Then the console shows each of:
       | text            |
@@ -25,7 +25,7 @@ Feature: Memory monitor
       | h               |
 
   @qemu @SYS-10 @SW-MON-01 @SW-MON-02 @CMP-24 @CMP-25 @VER-SYS-08 @VER-STK-05
-  Scenario: Write then read a word of RAM
+  Scenario: CMP-24-S01: Write then read a word of RAM
     When I enter "w 3ffb1000 cafe"
     Then the console shows "write 3ffb1000 = 0000cafe"
     When I enter "r 0x3ffb1000"
@@ -33,24 +33,24 @@ Feature: Memory monitor
     And the console shows "0000cafe"
 
   @qemu @SYS-10 @SW-MON-03 @VER-SYS-08
-  Scenario: Dump defaults to 16 words, 4 per line
+  Scenario: SW-MON-03-S01: Dump defaults to 16 words, 4 per line
     When I enter "d 3ffb0000"
     Then the console shows 4 lines matching /^3ffb00[0-3]0:( [0-9a-f]{8}){4}$/
 
   @qemu @SYS-10 @VER-SYS-08
-  Scenario: Dump with a count
+  Scenario: SYS-10-S01: Dump with a count
     When I enter "d 3ffb0000 8"
     Then the console shows 2 lines matching /^3ffb00[01]0:( [0-9a-f]{8}){4}$/
 
   @qemu @SYS-10 @VER-SYS-08 @VER-STK-05
-  Scenario: Call a function by address
+  Scenario: SYS-10-S02: Call a function by address
     Given the address of "gpio_init" from "xtensa-esp32-elf-nm e32.elf"
     When I enter "g <that address>"
     Then the console shows "go <that address>"
     And the monitor prompt is shown
 
   @qemu @SYS-11 @SUB-MON-02 @VER-SYS-08 @VER-STK-05
-  Scenario Outline: Malformed commands are rejected
+  Scenario Outline: SUB-MON-02-S01: Malformed commands are rejected
     When I enter "<line>"
     Then the console shows "?? (h for help)"
     And the monitor prompt is shown
@@ -68,7 +68,7 @@ Feature: Memory monitor
       | f             | missing argument          |
 
   @qemu @SYS-31 @SW-MON-06 @VER-SYS-08 @VER-STK-07
-  Scenario: Interrupt statistics
+  Scenario: SW-MON-06-S01: Interrupt statistics
     When I wait 2 seconds
     And I enter "i"
     Then the console shows a line matching /^uptime \d+\.\d\d s \(\d+ ticks\)$/
@@ -76,7 +76,7 @@ Feature: Memory monitor
     And the console shows a line matching /^irq 17: \d+$/
 
   @qemu @SYS-10 @VER-SYS-08
-  Scenario: Empty lines just prompt again
+  Scenario: SYS-10-S03: Empty lines just prompt again
     When I enter ""
     Then the monitor prompt is shown
     And the console does not show "??"

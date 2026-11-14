@@ -7,7 +7,10 @@ tracecheck.py -- check e32's requirement traceability and write the matrix.
     python3 tools/tracecheck.py --self-test  prove every error class is detected
 
 Inputs:  docs/requirements/*.md   ("### ID — title" + "- **Field:** value")
-         docs/features/*.feature  (Gherkin tags)
+         docs/features/**/*.feature  (Gherkin tags; "Scenario: <REQ>-Snn: title")
+         tests/gtest/**/*.cpp     (test names <REQ>_Snn_Tnn_..., e.g. CMP_21_S01_T02_x)
+         tests/bdd/               (if present: pytest-bdd binds every scenario in
+                                   docs/features/*.feature as its test T01)
          docs/epics.md, docs/features.md, docs/stories.md
 Exit status is 1 if any error is found.  Python 3 standard library only.
 """
@@ -37,6 +40,11 @@ ENV_TAGS = {"host", "qemu", "hardware", "pending"}
 ID_RE = re.compile(r"\b(?:BR|STK|SYS|SUB|HW|SW|IF|CMP|VER)(?:-[A-Z]+)?-\d+\b")
 HEAD_RE = re.compile(r"^### ((?:BR|STK|SYS|SUB|HW|SW|IF|CMP|VER)(?:-[A-Z]+)?-\d+) — (.+)$")
 FIELD_RE = re.compile(r"^- \*\*([A-Za-z ]+):\*\* ?(.*)$")
+# "Scenario: CMP-21-S01: title" -> scenario ID, title
+SCN_RE = re.compile(r"^((?:BR|STK|SYS|SUB|HW|SW|IF|CMP)(?:-[A-Z]+)?-\d+-S\d\d): (.+)$")
+# GoogleTest: TEST(Suite, CMP_21_S01_T02_what) / TEST_F / TEST_P
+TEST_DEF_RE = re.compile(r"\bTEST(?:_F|_P)?\(\s*\w+\s*,\s*("
+                         r"(?:BR|STK|SYS|SUB|HW|SW|IF|CMP)(?:_[A-Z]+)?_\d+_S\d\d_T\d\d)")
 SOURCES = ["*.c", "*.S", "*.lds", "include/*.h", "tools/mkimage.c",
            "tools/build-toolchain.sh", "Makefile"]
 
@@ -74,10 +82,13 @@ def parse_requirements(req_dir):
 
 
 def parse_features(feat_dir):
-    """Return {tag: [(file, scenario title)]} and a list of (file, line, tag)."""
-    by_tag, all_tags = {}, []
-    for path in sorted(glob.glob(os.path.join(feat_dir, "*.feature"))):
-        fname = os.path.basename(path)
+    """Return {tag: [(file, scenario title)]}, a list of (file, line, tag)
+    and the scenarios, as dicts: id, title, file, line, tags, top (True for
+    files directly in docs/features, which pytest-bdd binds)."""
+    by_tag, all_tags, scenarios = {}, [], []
+    paths = glob.glob(os.path.join(feat_dir, "**", "*.feature"), recursive=True)
+    for path in sorted(paths):
+        fname = os.path.relpath(path, feat_dir).replace(os.sep, "/")
         feature_tags, pending = [], []
         for n, raw in enumerate(open(path, encoding="utf-8"), 1):
             line = raw.strip()
@@ -93,8 +104,33 @@ def parse_features(feat_dir):
                 else:
                     for t in set(pending + feature_tags):
                         by_tag.setdefault(t, []).append((fname, m.group(2)))
+                    sm = SCN_RE.match(m.group(2))
+                    scenarios.append({
+                        "id": sm.group(1) if sm else None,
+                        "title": sm.group(2) if sm else m.group(2),
+                        "file": fname, "line": n, "tags": pending + feature_tags,
+                        "top": "/" not in fname})
                 pending = []
-    return by_tag, all_tags
+    return by_tag, all_tags, scenarios
+
+
+def scenario_owner(sid):
+    return sid.rsplit("-S", 1)[0]
+
+
+def parse_tests(root):
+    """Return {test id: [where]} from tests/gtest sources (names such as
+    CMP_21_S01_T02_...) plus whether tests/bdd (pytest-bdd) exists."""
+    tests = {}
+    for path in sorted(glob.glob(os.path.join(root, "tests", "gtest", "**", "*.cpp"),
+                                 recursive=True)):
+        rel = os.path.relpath(path, root)
+        for n, line in enumerate(open(path, encoding="utf-8"), 1):
+            m = TEST_DEF_RE.search(line)
+            if m:
+                tid = m.group(1).replace("_", "-")
+                tests.setdefault(tid, []).append(f"{rel}:{n}")
+    return tests, os.path.isdir(os.path.join(root, "tests", "bdd"))
 
 
 def check(root):
@@ -102,7 +138,8 @@ def check(root):
     feat_dir = os.path.join(root, "docs", "features")
     reqs, errors = parse_requirements(req_dir)
     warnings = []
-    by_tag, all_tags = parse_features(feat_dir)
+    by_tag, all_tags, scenarios = parse_features(feat_dir)
+    tests, has_bdd = parse_tests(root)
 
     children = {rid: [] for rid in reqs}
     verifiers = {rid: [] for rid in reqs}
@@ -200,7 +237,45 @@ def check(root):
     for s in sorted(stk - traced):
         warnings.append(f"stories.md: no story traces to {s}")
 
-    return reqs, children, verifiers, by_tag, errors, warnings
+    # scenarios: ID, owner tag, uniqueness; tests: every scenario has one,
+    # every test names a scenario.  Top-level feature files are bound by
+    # pytest-bdd, which is test T01 of each of their scenarios.
+    seen = {}
+    for s in scenarios:
+        where = f"{s['file']}:{s['line']}"
+        sid = s["id"]
+        s["tests"] = []
+        if not sid:
+            errors.append(f"{where}: scenario has no ID ('<REQ>-Snn: title')")
+            continue
+        if sid in seen:
+            errors.append(f"{where}: duplicate scenario ID {sid} (also {seen[sid]})")
+        seen[sid] = where
+        owner = scenario_owner(sid)
+        if owner not in reqs:
+            errors.append(f"{where}: scenario {sid} names unknown requirement {owner}")
+        elif owner not in s["tags"]:
+            errors.append(f"{where}: scenario {sid} is not tagged @{owner}")
+        if s["top"] and has_bdd:
+            s["tests"].append(f"{sid}-T01")
+    by_sid = {s["id"]: s for s in scenarios if s["id"]}
+    for tid, wheres in sorted(tests.items(), key=lambda kv: natkey(kv[0])):
+        sid = tid.rsplit("-T", 1)[0]
+        if len(wheres) > 1:
+            errors.append(f"{wheres[1]}: duplicate test ID {tid} (also {wheres[0]})")
+        if sid not in by_sid:
+            errors.append(f"{wheres[0]}: test {tid} names unknown scenario {sid}")
+            continue
+        if tid.endswith("-T01") and by_sid[sid]["top"] and has_bdd:
+            errors.append(f"{wheres[0]}: {tid} is reserved for the pytest-bdd binding; "
+                          f"number GoogleTest tests of {sid} from T02")
+            continue
+        by_sid[sid]["tests"].append(tid)
+    for s in scenarios:
+        if s["id"] and not s["tests"]:
+            errors.append(f"{s['file']}:{s['line']}: scenario {s['id']} has no test")
+
+    return reqs, children, verifiers, by_tag, scenarios, errors, warnings
 
 
 def status_word(s):
@@ -218,7 +293,7 @@ def source_lines(root):
     return sum(sum(1 for _ in open(f, encoding="utf-8", errors="replace")) for f in files), len(files)
 
 
-def write_matrix(root, reqs, children, verifiers, by_tag, errors, warnings):
+def write_matrix(root, reqs, children, verifiers, by_tag, scenarios, errors, warnings):
     out = []
     w = out.append
     w("# Traceability matrix\n")
@@ -250,6 +325,11 @@ def write_matrix(root, reqs, children, verifiers, by_tag, errors, warnings):
       f"(target ≥ 80 %).")
     w(f"* **Source size (BR-01 KPI):** {lines} lines in {nfiles} firmware, tool and build "
       f"files (target ≤ 2,500).")
+    ntests = sum(len(s["tests"]) for s in scenarios)
+    w(f"* **Scenarios and tests:** {len(scenarios)} scenarios "
+      f"({sum(1 for s in scenarios if s['top'])} bound by pytest-bdd, "
+      f"{sum(1 for s in scenarios if not s['top'])} unit-level), {ntests} test IDs "
+      f"(T01 of a top-level scenario is its pytest-bdd binding; the rest are GoogleTest).")
     w(f"* **Check result:** {len(errors)} errors, {len(warnings)} warnings.\n")
 
     w("## Derivation tree (BR → STK → SYS)\n")
@@ -288,6 +368,17 @@ def write_matrix(root, reqs, children, verifiers, by_tag, errors, warnings):
                   f"{', '.join(sorted(children[r], key=natkey)) or '—'} | "
                   f"{', '.join(vs)} | {st} | {', '.join(feats)} |")
         w("")
+    w("## Scenarios and tests\n")
+    w("The scenario ID's prefix is the requirement it is filed under, and so its level.\n")
+    w("| Scenario | Level | File | Environment | Tests |")
+    w("|---|---|---|---|---|")
+    for s in sorted(scenarios, key=lambda s: natkey(s["id"] or "")):
+        sid = s["id"] or "(no ID)"
+        lvl = TYPES.get(prefix(sid), ("?",))[0]
+        env = " ".join(t for t in ("host", "qemu", "hardware", "pending") if t in s["tags"])
+        w(f"| {sid} | {lvl} | {s['file']}:{s['line']} | {env} | "
+          f"{', '.join(sorted(s['tests'], key=natkey)) or '—'} |")
+    w("")
     if warnings:
         w("## Warnings\n")
         for x in warnings:
@@ -315,7 +406,10 @@ def self_test():
                   "### VER-STK-01 — v\n- **Type:** Verification\n- **Verifies:** STK-01\n"
                   "- **Method:** Test\n- **Environment:** Host\n- **Status:** Passed\n",
     }
-    base_feat = "@EP-01 @F-01\nFeature: f\n  @host @STK-01 @VER-STK-01\n  Scenario: s\n"
+    base_feat = ("@EP-01 @F-01\nFeature: f\n  @host @STK-01 @VER-STK-01\n"
+                 "  Scenario: STK-01-S01: s\n")
+    unit_feat = "Feature: u\n  @host @STK-01 @VER-STK-01\n  Scenario: STK-01-S02: u\n"
+    unit_test = "TEST(U, STK_01_S02_T01_u) {}\n"
     cases = {
         "clean": ({}, None, None),
         "duplicate ID": ({"BR.md": base_reqs["BR.md"] * 2}, None, "duplicate ID"),
@@ -330,20 +424,34 @@ def self_test():
         "no method": ({"VER.md": base_reqs["VER.md"].replace("Method:** Test", "Method:** Guess")},
                       None, "no single TAID method"),
         "unknown tag": ({}, base_feat.replace("@STK-01", "@SYS-77"), "unknown requirement tag"),
+        "scenario without ID": ({}, base_feat.replace("STK-01-S01: ", ""), "scenario has no ID"),
+        "scenario not tagged with its owner": ({}, base_feat.replace("STK-01-S01", "BR-01-S01"),
+                                               "is not tagged"),
+        "unit scenario without test": ({}, None, "has no test", {"unit_test": ""}),
+        "test for unknown scenario": ({}, None, "names unknown scenario",
+                                      {"unit_test": unit_test + "TEST(U, STK_01_S09_T01_x) {}\n"}),
+        "T01 reused by GoogleTest": ({}, None, "reserved for the pytest-bdd binding",
+                                     {"unit_test": unit_test + "TEST(U, STK_01_S01_T01_x) {}\n"}),
     }
     ok = True
-    for name, (override, feat, expect) in cases.items():
+    for name, case in cases.items():
+        override, feat, expect = case[:3]
+        extra = dict({"unit_test": unit_test}, **(case[3] if len(case) > 3 else {}))
         with tempfile.TemporaryDirectory() as d:
             os.makedirs(os.path.join(d, "docs", "requirements"))
-            os.makedirs(os.path.join(d, "docs", "features"))
+            os.makedirs(os.path.join(d, "docs", "features", "unit"))
+            os.makedirs(os.path.join(d, "tests", "bdd"))
+            os.makedirs(os.path.join(d, "tests", "gtest"))
             files = dict(base_reqs, **override)
             for fn, txt in files.items():
                 open(os.path.join(d, "docs", "requirements", fn), "w").write(txt)
             open(os.path.join(d, "docs", "features", "f.feature"), "w").write(feat or base_feat)
+            open(os.path.join(d, "docs", "features", "unit", "u.feature"), "w").write(unit_feat)
+            open(os.path.join(d, "tests", "gtest", "t.cpp"), "w").write(extra["unit_test"])
             open(os.path.join(d, "docs", "epics.md"), "w").write("## EP-01 — e\n")
             open(os.path.join(d, "docs", "features.md"), "w").write("| F-01 | f |\n")
             open(os.path.join(d, "docs", "stories.md"), "w").write("Traces to: STK-01\n")
-            errs = check(d)[4]
+            errs = check(d)[5]
             if expect is None:
                 good = not errs
             else:
@@ -357,14 +465,14 @@ def self_test():
 def main(argv):
     if "--self-test" in argv:
         return self_test()
-    reqs, children, verifiers, by_tag, errors, warnings = check(ROOT)
+    reqs, children, verifiers, by_tag, scenarios, errors, warnings = check(ROOT)
     for e in errors:
         print("error:", e)
     for x in warnings:
         print("warning:", x)
     if "--check" not in argv:
-        print("wrote", os.path.relpath(write_matrix(ROOT, reqs, children, verifiers,
-                                                    by_tag, errors, warnings), ROOT))
+        print("wrote", os.path.relpath(write_matrix(ROOT, reqs, children, verifiers, by_tag,
+                                                    scenarios, errors, warnings), ROOT))
     print(f"{len(reqs)} entries, {len(errors)} errors, {len(warnings)} warnings")
     return 1 if errors else 0
 

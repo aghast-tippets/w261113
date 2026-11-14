@@ -82,6 +82,24 @@ struct panic_frame {
 	u32 eps[6];		/* eps[0] is EPS2 */
 };
 
+#ifdef E32_HOST
+/* Host test build: special registers live in the simulated CPU */
+#define RSR(sr)		e32_host_rsr(#sr)
+#define WSR(sr, v)	e32_host_wsr(#sr, (v))
+#define irq_save()	e32_host_irq_save()
+#define irq_restore(ps)	e32_host_irq_restore(ps)
+#define cpu_waiti0()	e32_host_waiti0()
+#define cpu_ill()	e32_host_trap("ill")
+#define cpu_break()	e32_host_trap("break")
+#define cpu_bad_sp()	e32_host_trap("bad sp")
+#else
+/* Single instructions that C can't express */
+#define cpu_waiti0()	asm volatile ("waiti 0" ::: "memory")
+#define cpu_ill()	asm volatile ("ill")
+#define cpu_break()	asm volatile ("break 1, 15")
+/* Point sp at unmapped memory and spin until an interrupt uses it */
+#define cpu_bad_sp()	asm volatile ("movi a1, 0x100\n1: j 1b")
+
 /* Special register access: the register name must be a constant */
 #define RSR(sr) ({ u32 __v; asm volatile ("rsr %0, " #sr : "=a" (__v)); __v; })
 #define WSR(sr, v) asm volatile ("wsr %0, " #sr "; rsync" :: "a" (v) : "memory")
@@ -99,6 +117,7 @@ static inline void irq_restore(u32 ps)
 {
 	asm volatile ("wsr %0, ps; rsync" :: "a" (ps) : "memory");
 }
+#endif /* E32_HOST */
 #endif /* __ASSEMBLER__ */
 
 #endif /* __XTENSA_H__ */
