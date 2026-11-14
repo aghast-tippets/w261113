@@ -22,6 +22,15 @@ Evidence written as `@VER-…` refers to the Gherkin scenarios in
   with the real boot ROM "ets Jul 29 2019" (rev 3).
 * **Board:** a physical ESP32 board, which no test has used yet.
 
+**Caution:** the QEMU results below were obtained before the host-build
+seams were added to the sources (`E32_HOST` in `types.h` and `xtensa.h`,
+and the `cpu_*()` macros). Those seams should not change the target code,
+but the target has not been rebuilt since. Re-run the QEMU procedures with
+a fresh build before relying on them.
+
+Host results dated 2026-11-14 come from `tests/run_all.sh`; see
+[`../test-results.md`](../test-results.md).
+
 All results marked Passed were obtained on 2026-11-14, with the toolchain
 built from `esp-2.47.0_20261109` and `esp-14.4.0_20261030`.
 
@@ -1016,7 +1025,7 @@ built from `esp-2.47.0_20261109` and `esp-14.4.0_20261030`.
 - **Procedure:** As VER-CMP-18.
 - **Evidence:** @VER-CMP-18
 - **Pass criteria:** As VER-CMP-18.
-- **Status:** Partial. Usage, non-ELF, non-Xtensa and missing-file cases pass, as do esptool decoding and the checksum. The >16-segment, zero-segment and truncated-file cases are pending (automation).
+- **Status:** Passed (Host, 2026-11-14). The usage, non-ELF, non-Xtensa and missing-file cases pass, as do esptool decoding and the checksum. The >16-segment, zero-segment and truncated-file cases are now automated (SW-IMG-03-S01, in both suites) and pass.
 
 ### VER-SW-17 — Build scripts
 - **Type:** Verification
@@ -1291,44 +1300,44 @@ built from `esp-2.47.0_20261109` and `esp-14.4.0_20261030`.
 - **Verifies:** CMP-10, CMP-11, CMP-12
 - **Method:** Test
 - **Level:** Unit
-- **Environment:** QEMU
+- **Environment:** QEMU, Host
 - **Procedure:** As VER-SW-09.
 - **Evidence:** @VER-SW-09
 - **Pass criteria:** As VER-SW-09.
-- **Status:** Partial. Same as VER-SW-09.
+- **Status:** Partial. On the host (2026-11-14) the unit scenarios CMP-10-S02, CMP-10-S03, CMP-11-S02, CMP-12-S02 and CMP-12-S03 pass, including the invalid-line and no-handler cases. On the target the negative cases are still pending (automation), as VER-SW-09.
 
 ### VER-CMP-08 — timer.c unit
 - **Type:** Verification
 - **Verifies:** CMP-13
 - **Method:** Test
 - **Level:** Unit
-- **Environment:** QEMU
+- **Environment:** QEMU, Host
 - **Procedure:** Run at 20 kHz for more than 10 s, and check that `jiffies` never stalls.
 - **Evidence:** @VER-SYS-13
 - **Pass criteria:** Monotonic growth throughout.
-- **Status:** Passed (QEMU), after the fix.
+- **Status:** Passed (QEMU), after the fix. Passed (Host, 2026-11-14): CMP-13-S02 to CMP-13-S04, including the catch-up regression.
 
 ### VER-CMP-09 — wdt.c unit
 - **Type:** Verification
 - **Verifies:** CMP-14
 - **Method:** Test
 - **Level:** Unit
-- **Environment:** QEMU
+- **Environment:** QEMU, Host
 - **Procedure:** As VER-SW-02.
 - **Evidence:** @VER-SYS-07
 - **Pass criteria:** As VER-SW-02.
-- **Status:** Partial.
+- **Status:** Partial. Passed (Host, 2026-11-14): CMP-14-S02 checks the exact write sequence for all three watchdogs. The target checks remain as VER-SW-02.
 
 ### VER-CMP-10 — io.c unit
 - **Type:** Verification
 - **Verifies:** CMP-15, CMP-16, CMP-17, CMP-18
 - **Method:** Test
 - **Level:** Unit
-- **Environment:** QEMU
+- **Environment:** QEMU, Host
 - **Procedure:** As VER-SW-03, VER-SW-04 and VER-SW-05.
 - **Evidence:** @VER-SUB-13
 - **Pass criteria:** As those.
-- **Status:** Partial. Overrun and truncation cases are pending.
+- **Status:** Partial. Passed (Host, 2026-11-14): CMP-15-S02, CMP-15-S03, CMP-16-S02, CMP-16-S03, CMP-17-S02, CMP-17-S03 and CMP-18-S02, including the overrun and truncation cases. On the target the overrun and truncation cases are still pending.
 
 ### VER-CMP-11 — pp_printf unit
 - **Type:** Verification
@@ -1339,7 +1348,7 @@ built from `esp-2.47.0_20261109` and `esp-14.4.0_20261030`.
 - **Procedure:** Compile `pp_printf.c` for the host with a stub `putc`, and compare `pp_sprintf` with glibc `snprintf` on every example in printf.feature.
 - **Evidence:** @VER-CMP-11
 - **Pass criteria:** All identical.
-- **Status:** Passed (Host). Six format groups were compared on 2026-11-14; the full example table is pending automation.
+- **Status:** Passed (Host, 2026-11-14). The full printf.feature example table (CMP-19-S01, 10 rows), the extension cases (SW-FMT-01-S01) and CMP-20-S01 are automated and pass.
 
 ### VER-CMP-12 — gpio.c unit
 - **Type:** Verification
@@ -1350,29 +1359,29 @@ built from `esp-2.47.0_20261109` and `esp-14.4.0_20261030`.
 - **Procedure:** Compile `gpio.c` for the host with `readl`/`writel` redirected to a fake register file; check the table, the refusals (no writes) and the register values written for `p 2 1`, `p 34` and `a 2 3`.
 - **Evidence:** @VER-CMP-12
 - **Pass criteria:** The expected writes and no writes on refusal.
-- **Status:** Pending (automation).
+- **Status:** Passed (Host, 2026-11-14): CMP-21-S01 to CMP-21-S04, CMP-22-S01 and CMP-23-S01 against a mocked register bus. The `p 34` case is covered by the equivalent upper-port input case for GPIO 35 (CMP-22-S01).
 
 ### VER-CMP-13 — mimmo.c unit
 - **Type:** Verification
 - **Verifies:** CMP-24, CMP-25, CMP-26, CMP-27
 - **Method:** Test
 - **Level:** Unit
-- **Environment:** QEMU
+- **Environment:** QEMU, Host
 - **Procedure:** As VER-SW-13.
 - **Evidence:** @VER-SYS-08
 - **Pass criteria:** As VER-SW-13.
-- **Status:** Passed (QEMU).
+- **Status:** Passed (QEMU). Passed (Host, 2026-11-14): CMP-24-S02, CMP-25-S01 to CMP-25-S03 and CMP-26-S02 (the self test on the simulated CPU). `fault()` itself (CMP-27) is checked on the target only.
 
 ### VER-CMP-14 — panic.c unit
 - **Type:** Verification
 - **Verifies:** CMP-28, CMP-29
 - **Method:** Test
 - **Level:** Unit
-- **Environment:** QEMU
+- **Environment:** QEMU, Host
 - **Procedure:** As VER-SW-14.
 - **Evidence:** @VER-SUB-17
 - **Pass criteria:** As VER-SW-14.
-- **Status:** Partial. The nested case is pending.
+- **Status:** Partial. Passed (Host, 2026-11-14): CMP-28-S01, CMP-28-S02 and CMP-29-S02 (report formats for every frame kind, the reboot write). The nested case is pending.
 
 ### VER-CMP-15 — lib.c unit
 - **Type:** Verification
@@ -1383,18 +1392,18 @@ built from `esp-2.47.0_20261109` and `esp-14.4.0_20261030`.
 - **Procedure:** Compile `lib.c` for the host (renamed symbols) and compare `memset` (lengths 0–64), `memcpy` (0–32 at an offset) and `strlen` (4 strings) with glibc. Check `udelay` through the tick ratio in `s`.
 - **Evidence:** @VER-CMP-15
 - **Pass criteria:** 0 failures; 9–11 ticks.
-- **Status:** Passed (Host, QEMU).
+- **Status:** Passed (Host, QEMU). On the host `udelay` is also checked directly, across CCOUNT wrap-around (CMP-31-S02), and against the tick (CMP-13-S04).
 
 ### VER-CMP-16 — main.c unit
 - **Type:** Verification
 - **Verifies:** CMP-32
 - **Method:** Test
 - **Level:** Unit
-- **Environment:** QEMU
+- **Environment:** QEMU, Host
 - **Procedure:** Boot normally and in blink mode.
 - **Evidence:** @VER-SYS-18
 - **Pass criteria:** As VER-SYS-06 and VER-SYS-18.
-- **Status:** Passed (QEMU).
+- **Status:** Passed (QEMU). Passed (Host, 2026-11-14): CMP-32-S02 (banner, interrupt set-up, monitor entry). Blink mode is checked on the target only.
 
 ### VER-CMP-17 — Header units
 - **Type:** Verification
@@ -1416,7 +1425,7 @@ built from `esp-2.47.0_20261109` and `esp-14.4.0_20261030`.
 - **Procedure:** Run every example in image.feature, covering the valid and invalid inputs.
 - **Evidence:** @VER-CMP-18
 - **Pass criteria:** The exit status and output as specified.
-- **Status:** Partial. As VER-SW-16.
+- **Status:** Passed (Host, 2026-11-14). As VER-SW-16.
 
 ### VER-CMP-19 — Linker script and Makefile units
 - **Type:** Verification
