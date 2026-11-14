@@ -1,5 +1,12 @@
 # e32 test suites
 
+Run everything, keep the results and regenerate the matrix:
+
+    tests/run_all.sh          # from the e32 directory
+
+JUnit XML goes to `tests/results/`. `tools/tracecheck.py` turns it into
+`docs/test-results.md`.
+
 ## pytest-bdd (feature files)
 
 `tests/bdd/` binds every scenario of the top-level feature files,
