@@ -68,6 +68,9 @@ tag v1.0-rc1 3d9915ad97ba6457adb35820189ccb52e1e79a5d 2026-11-15T07:46:45Z \
 Release candidate. Still to confirm on a machine with xtensa-esp32-elf-gcc
 and Espressif QEMU: make clean all, then tests/run_all.sh."
 
+tag copilot-web-v1.0-rc1 84beb91205cee14de383c0d2cb81390a41c421e9 2026-11-15T00:00:00Z \
+"copilot-web-v1.0-rc1: copilot-web MCP bridge and terminal chat for Microsoft 365 Copilot"
+
 # ------------------------------------------------------------ end of log
 
 echo "$created created, $present already present"
