@@ -14,6 +14,7 @@ scratch for his students. e32 applies both ideas to the ESP32.
 ### BR-01 — A complete, learnable bare-metal reference
 - **Type:** Business
 - **EARS:** Ubiquitous
+- **Priority:** Must
 - **Statement:** The project shall provide a bare-metal ESP32 code base that a learner with C and Unix experience can read and understand end to end, from reset to interrupts and faults.
 - **Derives from:** —
 - **Rationale:** Rubini's packages exist to give students a working base they fully understand. Vendor SDKs hide the boot, the vector and the interrupt paths behind hundreds of thousands of lines.
@@ -23,6 +24,7 @@ scratch for his students. e32 applies both ideas to the ESP32.
 ### BR-02 — Independence from vendor SDKs and run-time ROM code
 - **Type:** Business
 - **EARS:** Ubiquitous
+- **Priority:** Must
 - **Statement:** The project shall depend on no vendor SDK, C library or boot-ROM routine at run time, so that it stays buildable and maintainable for years without tracking vendor releases.
 - **Derives from:** —
 - **Rationale:** Rubini's bbfs argument: every dependency is a future upgrade cost. A package that needs only a compiler is cheap to keep alive.
@@ -32,6 +34,7 @@ scratch for his students. e32 applies both ideas to the ESP32.
 ### BR-03 — Runs on the cheapest commodity boards
 - **Type:** Business
 - **EARS:** Ubiquitous
+- **Priority:** Must
 - **Statement:** The firmware shall run on a basic ESP32 module (for example ESP32-WROOM-32 on a DevKit board) without PSRAM or extra hardware.
 - **Derives from:** —
 - **Rationale:** Students and hobbyists use boards costing a few euros. Rubini's original target was a 13 EUR Olimex board.
@@ -41,6 +44,7 @@ scratch for his students. e32 applies both ideas to the ESP32.
 ### BR-04 — A foundation for application projects
 - **Type:** Business
 - **EARS:** Ubiquitous
+- **Priority:** Must
 - **Statement:** The project shall provide the mechanisms an application needs (console, GPIO, interrupts, time base and fault reporting) so that applications can be added without modifying startup or vector code.
 - **Derives from:** —
 - **Rationale:** The value of a base is measured by what can be built on it.
@@ -50,6 +54,7 @@ scratch for his students. e32 applies both ideas to the ESP32.
 ### BR-05 — Verifiable largely without hardware
 - **Type:** Business
 - **EARS:** Ubiquitous
+- **Priority:** Must
 - **Statement:** The project shall be verifiable for most of its system requirements in an emulator that runs the real ESP32 boot ROM.
 - **Derives from:** —
 - **Rationale:** Emulation cuts test cost and cycle time, and allows automated regression testing.
@@ -59,6 +64,7 @@ scratch for his students. e32 applies both ideas to the ESP32.
 ### BR-06 — Original, freely distributable work
 - **Type:** Business
 - **EARS:** Ubiquitous
+- **Priority:** Must
 - **Statement:** The project's firmware and tools shall consist of original work containing no source copied from ESP-IDF, Arduino, newlib or other third-party firmware, so that the maintainer can license it freely.
 - **Derives from:** —
 - **Rationale:** Licensing freedom for teaching and reuse. The register-window spill and fill sequences follow the Xtensa ISA's architecturally defined form, which is a specification rather than borrowed code.

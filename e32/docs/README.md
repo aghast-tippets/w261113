@@ -8,32 +8,30 @@ the prose and requirements, and Gherkin `.feature` files for scenarios.
 ## Process
 
 The project follows the gated BDD pipeline in
-[`bdd-framework.md`](bdd-framework.md) (description → EARS → Gherkin → tests
-→ TDD → traceability). [`pipeline.md`](pipeline.md) records which phase each
-artefact has reached and what is still open.
+[`bdd-framework.md`](bdd-framework.md), version 2.0: description → actors,
+epics and stories → EARS requirements → Gherkin features, rules and
+scenarios → tests → TDD → traceability. [`pipeline.md`](pipeline.md)
+records where each phase stands, how the v1 artefacts were migrated, and
+which gate decisions are open.
 
 ## How to read it
 
-Read top-down for the "why", or bottom-up to see where a line of code comes
-from:
+The files are of three kinds (framework §1.6). **Records** define what each
+item is and are never pruned. The **ledger** is the only place test status
+is written. The **work view** lists what is left to do. Read top-down for
+the "why", or bottom-up to see where a line of code comes from.
 
-1. [`actors-and-roles.md`](actors-and-roles.md): who and what interacts
-   with the system.
-2. [`epics.md`](epics.md): the nine large bodies of work.
-3. [`features.md`](features.md): the features each epic delivers, one
-   `.feature` file each.
-4. [`stories.md`](stories.md): user stories with acceptance criteria.
-5. [`requirements/`](requirements/): the requirement levels, one file per
-   type (table below).
-6. [`features/*.feature`](features/): Gherkin scenarios, the verification
-   evidence for the `Test` method.
-7. [`traceability.md`](traceability.md): the generated matrix linking every
-   requirement to its parent, children, verification and scenarios.
-8. [`test-results.md`](test-results.md): the generated outcome of every
-   scenario and requirement in the last `tests/run_all.sh`.
-9. [`verification-report.md`](verification-report.md): the generated
-   Phase 5 audit: derivation, verification, Business-to-unit threads and
-   the full-chain matrix.
+| File | Kind | Holds |
+|---|---|---|
+| [`actors.md`](actors.md) | Record | Every actor (`ACT-…`): type, goal, personas, and the roles they play |
+| [`requirements.md`](requirements.md) | Record | The problem statement and the index of the requirement files |
+| [`epics.md`](epics.md) | Record | The nine epics (`EP-nn`): goal, business goals realised, stories, status, completion record, history |
+| [`stories.md`](stories.md) | Record | Every user story (`US-nn`): narrative, acceptance criteria → requirements, features, status, completion record, history |
+| [`requirements/`](requirements/) | Record | The requirements, one file per type (table below) |
+| [`features.md`](features.md) | Record index | The feature catalogue (`FEAT-nnn`) and the retired v1 feature IDs |
+| [`features/<level>/`](features/) | Record | Gherkin: one feature per capability, epic and level; one `Rule:` per requirement; scenarios under their rule |
+| [`traceability.md`](traceability.md) | Ledger | Generated: requirement, story and actor coverage, every scenario's tests and results, VER evidence, the Phase 6 audit |
+| [`backlog.md`](backlog.md) | Work view | Generated: the stories that are not Done, and what each still needs |
 
 ## Requirement types
 
@@ -71,13 +69,14 @@ Every `VER` entry names exactly one method:
 
 ### Verification status
 
-Each `VER` entry records an honest status:
+Each `VER` entry records an honest status (the ledger also shows the
+outcome of its evidence in the last test run):
 
 * **Passed**: executed and passed, with the environment and date stated.
 * **Partial**: some of the procedure has been executed; the rest is listed.
 * **Pending (hardware)**: needs a physical board; not yet executed.
-* **Pending (automation)**: the scenario is written, but there is no
-  executable step definition yet (Phase 3).
+* **Pending (automation)**: the scenario is written, but it is not
+  automated yet (`@pending`).
 
 Everything marked Passed was run in Espressif's QEMU fork with the real
 ESP32 boot ROM (rev 3, "ets Jul 29 2019") or on the build host, during
@@ -101,52 +100,107 @@ Requirements Syntax). Each entry names its pattern:
 ## Entry format
 
 All requirement files use the same machine-readable layout, which
-`tools/tracecheck.py` parses:
+`tools/tracecheck.py` parses. A field's value may continue on indented
+lines, such as a numbered list in a statement:
 
     ### SYS-12 — Drive a GPIO output
     - **Type:** System
     - **EARS:** Event-driven
+    - **Priority:** Must
     - **Statement:** When the operator ..., the system shall ...
     - **Derives from:** STK-07
+    - **Story:** US-15            (stakeholder requirements, and system
+                                   requirements that formalise an
+                                   acceptance criterion directly)
+    - **Rationale:** ...
     - **Verified by:** VER-SYS-09
 
-Feature files tag each scenario with the requirement IDs it exercises and
-the `VER` entry it belongs to, for example `@SYS-12 @VER-SYS-09`.
+Stories and epics use one `## <ID> — title` section each, with
+`- **Field:** value` lines (several fields may share a line, separated by
+` · `), and an Index table that must agree with the sections.
 
-Every scenario also has a permanent ID in its name, `<REQ>-Snn`, filed
-under the lowest-level requirement it is tagged with, so the prefix gives
-its level:
+## Features, rules and scenarios
 
-    @qemu @SYS-14 @SUB-GPIO-02 @SW-GPIO-01 @HW-07 @VER-SYS-10
-    Scenario Outline: SW-GPIO-01-S01: Refused pins
+A feature file holds one capability of one epic at one level. Its folder is
+the level: `acceptance` (BR, STK), `system`, `subsystem`, `hardware`,
+`software`, `interface`, `unit` (CMP). Each requirement appears as exactly
+one `Rule:`, titled with its ID, with its EARS statement as the first
+description line. Scenarios sit under the rule they illustrate, and their
+permanent ID carries the rule's ID:
 
-Each test carries the ID of the scenario it implements plus a test number,
-`<REQ>-Snn-Tnn`. For a scenario in `features/*.feature`, T01 is its
-pytest-bdd binding (`tests/bdd`). Further tests, and every test of a
-unit-level scenario in `features/unit/`, are GoogleTest tests in
-`tests/gtest`, named with underscores (`CMP_21_S01_T02_…`). See
-[`../tests/README.md`](../tests/README.md).
+    @EP-05 @FEAT-042
+    Feature: FEAT-042: GPIO control
+      Epic: EP-05 GPIO control   ·   Level: software
+      Supports: US-16 via STK-07 → SYS-14 → SUB-GPIO-02 → SW-GPIO-01
+
+      @SW-GPIO-01
+      Rule: SW-GPIO-01: Valid pins
+        EARS: If a GPIO number is below 0, 40 or above, ... then `gpio_valid` shall return false.
+
+        @qemu @SYS-14 @SUB-GPIO-02 @VER-SYS-10
+        Scenario Outline: SW-GPIO-01-S01: Refused pins
+
+Acceptance- and system-level features repeat, word for word, the narrative
+of every story they deliver; lower levels name each story with the
+derivation chain that links it. A scenario's own tags give its environment
+(`@host`, `@qemu`, `@hardware`), `@pending` (not yet automated), `@gtest`
+(implemented by GoogleTest), the `@VER-…` entry it is evidence for, and the
+other requirements it also exercises.
+
+Each test carries its scenario's ID plus a test number, `<REQ>-Snn-Tnn`.
+For a scenario not tagged `@gtest`, T01 is its pytest-bdd binding
+(`tests/bdd`); further tests, and every test of a `@gtest` scenario, are
+GoogleTest tests in `tests/gtest`, named with underscores
+(`CMP_21_S01_T02_…`). See [`../tests/README.md`](../tests/README.md).
+
+## Status and the ledger
+
+Story and epic status follow from the test results, one way only:
+
+    tests/run_all.sh → tests/results/*.xml → traceability.md (rule ✅ / 🔴 / ⏭ / ⚠)
+                     → stories.md, epics.md (✅ Done or reopened, with history)
+                     → backlog.md (Open work)
+
+A story is Done when every Test-verified requirement that traces to it
+(its refining requirements and everything derived from them) has a Rule
+whose scenarios are all ✅. "Skipped here" (no QEMU, board or cross
+compiler) is not ✅.
 
 ## Checking traceability
 
-    python3 tools/tracecheck.py           # check links, rewrite traceability.md
-    python3 tools/tracecheck.py --check   # check only; non-zero exit on errors
+    python3 tools/tracecheck.py                  # check, rewrite traceability.md and backlog.md
+    python3 tools/tracecheck.py --check          # check only; non-zero exit on errors
+    python3 tools/tracecheck.py --strict         # also fail on coverage gaps (Phase 6 sign-off)
+    python3 tools/tracecheck.py --record-status  # write Done / reopened into stories.md, epics.md
+    python3 tools/tracecheck.py --self-test      # prove every error class is detected
 
-The checker fails when any of these is true:
+The checker reports an **error** (and exits 1) when:
 
-* An ID is duplicated.
-* A parent or a verified ID does not exist.
-* A requirement derives from the wrong level.
-* A requirement has no verification.
-* A `VER` entry lacks a method.
-* A feature-file tag names an unknown ID.
-* A scenario has no ID, a duplicate ID, or an ID whose requirement it is
-  not tagged with.
-* A scenario has no test, a test names an unknown scenario, or a
-  GoogleTest test takes the T01 reserved for a pytest-bdd binding.
+* An ID is duplicated, or a parent, verified ID, story, actor, epic or
+  feature it names does not exist.
+* A requirement derives from the wrong level, or has no verification,
+  priority, rationale or EARS statement; a `VER` entry lacks a method.
+* An epic realises no business requirement or has no story; a business
+  requirement has no epic; a primary actor has no persona or no story.
+* A story has no epic, actor, narrative or refining requirement, a
+  criterion without requirements, or an index row that disagrees with its
+  section; `epics.md` and `stories.md` disagree on an epic's stories.
+* A feature is not in a level folder, has no `FEAT-` ID or not exactly one
+  epic; a rule is not a known requirement, is at the wrong level, appears
+  twice, or its EARS line differs from the requirement; a scenario sits
+  outside a rule or under another requirement's rule; a feature narrative
+  differs from `stories.md`.
+* A tag names an unknown ID.
+* A scenario has no ID or no test; a test names an unknown scenario or
+  takes the T01 of a pytest-bdd binding.
+* A story or epic is recorded Done but its rules are not all ✅, or the
+  other way round (run `--record-status`); a Done item has no completion
+  record.
 
-It warns about parents with no children and about `VER` entries that point
-to scenarios that don't exist.
+It reports a **coverage gap** when a Test-verified requirement has no Rule,
+or its Rule has no scenario. Gaps are open Phase 3 work: they appear in the
+ledger's audit and in `backlog.md`, and fail the run only with `--strict`.
+It warns about parents with no children.
 
 ## Glossary
 

@@ -14,7 +14,17 @@ import pytest
 
 HERE = Path(__file__).resolve().parent
 E32 = HERE.parent.parent                       # the e32 project directory
-FEATURES = E32 / "docs" / "features"           # top level only; unit/ is another layer
+FEATURES = E32 / "docs" / "features"           # docs/features/<level>/*.feature
+
+
+def feature_files():
+    """Every feature file, in its level folder (framework v2.0)."""
+    return sorted(FEATURES.glob("*/*.feature"))
+
+
+def feature_name(path):
+    """The path pytest-bdd's FeatureParser takes: relative to FEATURES."""
+    return str(path.relative_to(FEATURES))
 GTEST_BIN = Path(os.environ.get("E32_GTEST_BIN", E32 / "tests" / "gtest" / "build" / "e32_tests"))
 
 ID_RE = re.compile(r"^([A-Z]+(?:-[A-Z]+)*-\d+-S\d+):")    # "CMP-21-S01: ..." -> "CMP-21-S01"

@@ -6,7 +6,7 @@
 namespace e32 {
 namespace {
 
-// Scenario CMP-30-S01 (docs/features/build.feature): the support library
+// Scenario CMP-30-S01 (docs/features/unit/build.feature): the support library
 // matches ISO C.  T01 is the pytest-bdd binding; these are T02..T04.
 
 TEST(LibIsoC, CMP_30_S01_T02_memset_matches_iso_c_for_lengths_0_to_64) {
@@ -50,7 +50,7 @@ TEST(LibIsoC, CMP_30_S01_T04_strlen_matches_iso_c_for_4_strings) {
   }
 }
 
-// Scenario CMP-31-S02 (docs/features/unit/gpio_lib_printf.feature)
+// Scenario CMP-31-S02 (docs/features/unit/timekeeping.feature)
 
 class UdelayTest : public SimTest {};
 

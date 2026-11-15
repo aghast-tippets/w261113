@@ -1,6 +1,8 @@
 #!/bin/sh
 # run_all.sh -- build and run both test suites, keep JUnit XML results in
-# tests/results/, then regenerate docs/traceability.md from them.
+# tests/results/, then record story and epic status changes in
+# docs/stories.md and docs/epics.md and regenerate docs/traceability.md
+# (the ledger) and docs/backlog.md (the work view) from them.
 #
 #   tests/run_all.sh            from the e32 directory
 #
@@ -19,5 +21,5 @@ tests/gtest/build/e32_tests --gtest_brief=1 \
 python3 -m pytest tests/bdd -q -p no:cacheprovider \
 	--junitxml=tests/results/bdd.xml || status=1
 
-python3 tools/tracecheck.py || status=1
+python3 tools/tracecheck.py --record-status || status=1
 exit $status

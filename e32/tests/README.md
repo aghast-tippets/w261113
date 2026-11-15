@@ -1,17 +1,24 @@
 # e32 test suites
 
-Run everything, keep the results and regenerate the matrix:
+Run everything, keep the results, and update the ledger and the records:
 
     tests/run_all.sh          # from the e32 directory
 
-JUnit XML goes to `tests/results/`. `tools/tracecheck.py` turns it into
-`docs/test-results.md` and the Phase 5 audit `docs/verification-report.md`.
+JUnit XML goes to `tests/results/`. `tools/tracecheck.py --record-status`
+then writes the ledger (`docs/traceability.md`: every rule, scenario and
+test with its result, and the Phase 6 audit), records stories and epics
+that became Done or were reopened in `docs/stories.md` and
+`docs/epics.md`, and regenerates the work view (`docs/backlog.md`). See
+[`../docs/README.md`](../docs/README.md#status-and-the-ledger).
 
 ## pytest-bdd (feature files)
 
-`tests/bdd/` binds every scenario of the top-level feature files,
-`docs/features/*.feature`, to an executable pytest test. The unit-level
-features in `docs/features/unit/` belong to the GoogleTest layer, not this one.
+`tests/bdd/` binds every scenario of the feature files,
+`docs/features/<level>/*.feature`, to an executable pytest test, except the
+scenarios tagged `@gtest`: the GoogleTest suite implements those, and
+`conftest.py` deselects them. Gherkin `Rule:` blocks are supported (tags on
+a rule reach its scenarios as markers); a file whose rules have no scenario
+yet is skipped.
 
     cd e32 && python3 -m pytest tests/bdd           # all scenarios
     cd e32 && python3 -m pytest tests/bdd -q -rs    # with skip reasons
@@ -37,7 +44,7 @@ Select by ID with `-k`. Write the hyphens as underscores; matching ignores case:
 
 Gherkin tags become markers, again with `-` replaced by `_`: `@SYS-12` becomes
 `SYS_12`, `@VER-SYS-09` becomes `VER_SYS_09`, `@EP-01` becomes `EP_01`, and
-`@F-04` becomes `F_04`. `@host`, `@qemu`, `@hardware` and `@pending` keep their
+`@FEAT-042` becomes `FEAT_042`. `@host`, `@qemu`, `@hardware`, `@pending` and `@gtest` keep their
 names. Select by marker with `-m`:
 
     python3 -m pytest tests/bdd -m VER_SYS_09
@@ -160,7 +167,7 @@ the cross compiler was available when it was written.
 | `support/fixtures.h` | `SimTest` (fresh SoC per test, `NiceMock<MockBus>` delegating to the fake), `MonitorTest` (drives `mimmo()` through the console), `E32_IN_FRESH_PROCESS` |
 | `support/bdd.h` | `GIVEN` / `WHEN` / `THEN` / `AND`: each step becomes a scoped trace in failure messages |
 | `support/process.h` | Running host commands; `XtensaElf` builds ELF files byte by byte |
-| `unit/` | One file per firmware C file: the CMP scenarios of `docs/features/unit/`, plus T02+ of host scenarios in `docs/features/*.feature` |
+| `unit/` | One file per firmware C file: the `@gtest` scenarios (T01 onwards), plus T02 onwards of host scenarios that pytest-bdd also binds |
 | `e2e/` | `tools/mkimage` as a process on crafted ELF files; the firmware booted in QEMU (skipped without `$QEMU` and `flash.img`) |
 | `stubs/` | Empty implementations, for the red check |
 
@@ -172,8 +179,9 @@ the test binary keeps the real C library.
 
 `TEST_F(Suite, <SCENARIO>_Tnn_<what>)`, e.g. `CMP_21_S01_T02_flash_pin_is_refused_with_no_register_written`.
 `tools/tracecheck.py` reads these names, so a test must start with the ID
-of an existing scenario. T01 of a scenario in `docs/features/*.feature`
-belongs to its pytest-bdd binding; GoogleTest numbers those from T02.
+of an existing scenario. T01 of a scenario not tagged `@gtest` belongs to
+its pytest-bdd binding; GoogleTest numbers those from T02. A scenario that
+only GoogleTest implements is tagged `@gtest` and numbered from T01.
 Scenario Outlines become `TEST_P` with one instance per Examples row.
 
 ### Mocks, fakes and isolation
