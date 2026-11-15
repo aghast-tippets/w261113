@@ -31,6 +31,9 @@ from:
    requirement to its parent, children, verification and scenarios.
 8. [`test-results.md`](test-results.md): the generated outcome of every
    scenario and requirement in the last `tests/run_all.sh`.
+9. [`verification-report.md`](verification-report.md): the generated
+   Phase 5 audit: derivation, verification, Business-to-unit threads and
+   the full-chain matrix.
 
 ## Requirement types
 

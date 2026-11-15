@@ -16,7 +16,7 @@ Last updated: 2026-11-14.
 | 2 — Behaviours (Gherkin) | Feature files approved | **Approved** (2026-11-14): 103 baseline scenarios with IDs, plus 32 unit-level scenarios in `features/unit/` | [`features/`](features/) |
 | 3 — Tests (red) | Suite runs red | **Confirmed** (2026-11-14). GoogleTest against empty stubs (`-DE32_RED=ON`): 103 of 103 runnable tests fail on assertions, 2 skip (QEMU) | [`../tests/`](../tests/README.md) |
 | 4 — Implementation | Each scenario green | **Green wherever it can run here.** The firmware predates the tests, so no new code was needed. `tests/run_all.sh`: 45 scenarios passing, 87 skipped (no QEMU, board or cross compiler), 3 failing as `PENDING automation` (STK-02-S01, CMP-36-S01, CMP-36-S02: the toolchain script, which clones from GitHub, which this environment blocks). Twelve VER entries updated with the new host evidence | [`test-results.md`](test-results.md), [`requirements/VER.md`](requirements/VER.md) |
-| 5 — Verification | Matrix audited both ways | **Not started.** `tracecheck.py --check` passes (0 errors, 0 warnings) | [`traceability.md`](traceability.md) |
+| 5 — Verification | Matrix audited both ways | **Done, awaiting approval** (2026-11-15). Downward: 0 orphans, 0 childless parents. Across: every requirement has a VER entry, every scenario a test, every test a scenario. Thread: all 6 Business requirements reach a passing unit test. Evidence gaps: 64 Test-method VER entries are only skipped here (QEMU/board), 2 fail (toolchain script), 2 are manual board procedures. No retired items | [`verification-report.md`](verification-report.md) |
 
 "Baseline" means the artefacts arrived complete with the imported project.
 The owner approved them as the Phase 0–2 output on 2026-11-14.
