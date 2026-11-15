@@ -29,7 +29,7 @@ baud, with a 100 Hz timer tick and interrupt-driven serial input.
 | `mimmo.c` | The memory monitor, now with a self test and fault demos | `mimmo.c` |
 | `main.c` | Sets up interrupts, then runs mimmo (or blinks GPIO2 with `if (0)`) | `main.c` |
 | `lib.c` | `memset`, `memcpy`, `strlen` and `udelay` | — |
-| `docs/`, `tools/tracecheck.py` | Requirements (BR → CMP, VER), epics, stories, Gherkin features, traceability checker | — |
+| `docs/`, `tools/tracecheck.py`, `tests/` | Actors, epics, stories, requirements (BR → CMP, VER), Gherkin features and rules, ledger and backlog; the traceability checker; GoogleTest and pytest-bdd suites | — |
 
 ## Prerequisites
 
@@ -219,11 +219,14 @@ QEMU cannot test the following, so check them on hardware:
 ## Documentation and requirements
 
 [`docs/`](docs/README.md) specifies the project at every level, from
-business requirements down to unit contracts. It holds EARS-style
-requirements, actors and roles, epics, user stories, Gherkin `.feature`
-files, and a TAID verification entry with an honest status for each
-requirement. Run `python3 tools/tracecheck.py` to check every link and
-regenerate `docs/traceability.md`.
+business requirements down to unit contracts, following the gated BDD
+framework v2.0 in [`docs/bdd-framework.md`](docs/bdd-framework.md). It
+holds the actors, epics and user stories, EARS requirements with a TAID
+verification entry each, and Gherkin features in which every requirement
+is a `Rule:` illustrated by scenarios. `tests/run_all.sh` runs both test
+suites and updates the ledger (`docs/traceability.md`), the story and epic
+status, and the open work (`docs/backlog.md`); `python3 tools/tracecheck.py
+--check` checks every link.
 
 ## Provenance
 

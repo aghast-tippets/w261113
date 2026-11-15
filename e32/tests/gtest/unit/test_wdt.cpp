@@ -9,7 +9,7 @@ namespace {
 
 class WdtTest : public SimTest {};
 
-// Scenario CMP-14-S02 (unit/irq_timer_wdt.feature)
+// Scenario CMP-14-S02 (docs/features/unit/watchdog.feature)
 TEST_F(WdtTest, CMP_14_S02_T01_unlocks_clears_and_relocks_the_three_watchdogs_in_order) {
   constexpr uint32_t kKey = 0x50d83aa1;
   struct Wdt { uint32_t wprotect, config0; };

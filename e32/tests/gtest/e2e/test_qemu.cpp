@@ -105,7 +105,7 @@ class QemuE2E : public ::testing::Test {
   int in_ = -1, out_ = -1;
 };
 
-// Scenario IF-03-S01 (console.feature): banner and prompt after boot
+// Scenario IF-03-S01 (docs/features/interface/console.feature): banner and prompt after boot
 TEST_F(QemuE2E, IF_03_S01_T02_banner_and_prompt_after_flash_boot) {
   WHEN("the firmware is booted in QEMU from flash");
   THEN("the console shows the banner, the memory line and the prompt");
@@ -116,7 +116,7 @@ TEST_F(QemuE2E, IF_03_S01_T02_banner_and_prompt_after_flash_boot) {
   EXPECT_TRUE(WaitFor(R"(mimmo\.c: Ready to get input \(h for help\)\r\n> )")) << transcript_;
 }
 
-// Scenario CMP-26-S01 (self_test.feature): self test passes after a flash boot
+// Scenario CMP-26-S01 (docs/features/unit/self_test.feature): self test passes after a flash boot
 TEST_F(QemuE2E, CMP_26_S01_T02_self_test_passes_after_flash_boot) {
   GIVEN("the firmware is booted in QEMU from flash");
   ASSERT_TRUE(WaitFor("> ")) << transcript_;

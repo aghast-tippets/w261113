@@ -19,7 +19,7 @@ import pytest
 from pytest_bdd.parser import FeatureParser
 from pytest_bdd.scenario import get_step_function
 
-from support import ENV, FEATURES, World, norm_tag, scenario_id
+from support import ENV, FEATURES, World, feature_files, feature_name, norm_tag, scenario_id
 
 # @pending scenarios whose steps are nevertheless automated here; they run
 # instead of failing with "PENDING automation:".  Keep docs/pipeline.md and
@@ -30,20 +30,18 @@ AUTOMATED_PENDING = {
     "SW-FMT-01-S01",   # delegated to the GoogleTest suite (*SW_FMT_01_S01*)
 }
 
-ENV_TAGS = ("host", "qemu", "hardware", "pending")
-
-
-def feature_files():
-    return sorted(FEATURES.glob("*.feature"))
+ENV_TAGS = ("host", "qemu", "hardware", "pending", "gtest")
 
 
 def _all_tags():
     tags = set()
     for path in feature_files():
-        feature = FeatureParser(str(FEATURES), path.name).parse()
+        feature = FeatureParser(str(FEATURES), feature_name(path)).parse()
         tags |= feature.tags
         for sc in feature.scenarios.values():
             tags |= sc.tags
+            if sc.rule is not None:
+                tags |= sc.rule.tags
             for ex in sc.examples:
                 tags |= ex.tags
     return tags
@@ -66,6 +64,12 @@ def pytest_bdd_apply_tag(tag, function):
 
 
 def pytest_collection_modifyitems(config, items):
+    # @gtest scenarios are implemented by the GoogleTest suite (tests/gtest),
+    # which numbers their tests from T01: pytest-bdd does not bind them.
+    gtest = [i for i in items if i.get_closest_marker("gtest")]
+    if gtest:
+        config.hook.pytest_deselected(items=gtest)
+        items[:] = [i for i in items if not i.get_closest_marker("gtest")]
     for item in items:
         tags = {m.name for m in item.iter_markers() if m.name in ENV_TAGS}
         reason = ENV.environment_skip_reason(tags)

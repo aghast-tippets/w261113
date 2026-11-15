@@ -7,7 +7,7 @@
 namespace e32 {
 namespace {
 
-// Scenario CMP-19-S01 (docs/features/printf.feature): pp_sprintf matches
+// Scenario CMP-19-S01 (docs/features/unit/printf.feature): pp_sprintf matches
 // ISO C for the supported subset.  One test per Examples row; the row's
 // format and arguments are applied to both pp_sprintf and snprintf.
 
@@ -65,7 +65,7 @@ INSTANTIATE_TEST_SUITE_P(
 //   same varargs undefined, so pp_sprintf gets them as written with int
 //   arguments, and snprintf gets the target-equivalent "%u %d %u".
 
-// Scenario SW-FMT-01-S01 (docs/features/printf.feature): cases that
+// Scenario SW-FMT-01-S01 (docs/features/software/printf.feature): cases that
 // differ from or extend ISO C.
 
 TEST(PrintfExtensions, SW_FMT_01_S01_T02_documented_differences_from_iso_c) {
@@ -88,7 +88,7 @@ TEST(PrintfExtensions, SW_FMT_01_S01_T02_documented_differences_from_iso_c) {
   }
 }
 
-// Scenario CMP-20-S01 (docs/features/unit/gpio_lib_printf.feature)
+// Scenario CMP-20-S01 (docs/features/unit/printf.feature)
 
 class PpPrintfTest : public SimTest {};
 

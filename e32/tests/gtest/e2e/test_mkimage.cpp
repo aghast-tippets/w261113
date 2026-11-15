@@ -44,7 +44,7 @@ class MkimageE2E : public ::testing::Test {
   std::string dir_;
 };
 
-// Scenario SW-IMG-01-S01 (image.feature): invalid input is rejected
+// Scenario SW-IMG-01-S01 (docs/features/software/image.feature): invalid input is rejected
 TEST_F(MkimageE2E, SW_IMG_01_S01_T02_invalid_input_is_rejected_with_exit_status_1) {
   struct Row { std::vector<std::string> args; const char* message; };
   const Row rows[] = {
@@ -64,7 +64,7 @@ TEST_F(MkimageE2E, SW_IMG_01_S01_T02_invalid_input_is_rejected_with_exit_status_
   }
 }
 
-// Scenario SW-IMG-03-S01 (image.feature): unloadable ELF files are rejected
+// Scenario SW-IMG-03-S01 (docs/features/software/image.feature): unloadable ELF files are rejected
 TEST_F(MkimageE2E, SW_IMG_03_S01_T02_unloadable_elf_files_are_rejected) {
   XtensaElf many;
   for (int i = 0; i < 17; i++) many.Load(0x3ffb0000 + 0x100 * i, {1, 2, 3, 4});
@@ -85,7 +85,7 @@ TEST_F(MkimageE2E, SW_IMG_03_S01_T02_unloadable_elf_files_are_rejected) {
   }
 }
 
-// Scenario SW-IMG-04-S01 (image.feature): header bytes are as specified
+// Scenario SW-IMG-04-S01 (docs/features/software/image.feature): header bytes are as specified
 TEST_F(MkimageE2E, SW_IMG_04_S01_T02_header_bytes_are_as_specified) {
   GIVEN("a two-segment firmware ELF with entry 0x40080300");
   RunResult r = Mkimage(Firmware());
@@ -105,7 +105,7 @@ TEST_F(MkimageE2E, SW_IMG_04_S01_T02_header_bytes_are_as_specified) {
   EXPECT_EQ(img[4] | img[5] << 8 | img[6] << 16 | static_cast<uint32_t>(img[7]) << 24, 0x40080300u);
 }
 
-// Scenario SW-IMG-05-S01 (image.feature): the checksum is the last byte of
+// Scenario SW-IMG-05-S01 (docs/features/software/image.feature): the checksum is the last byte of
 // a 16-byte block
 TEST_F(MkimageE2E, SW_IMG_05_S01_T02_checksum_closes_a_16_byte_block) {
   GIVEN("a two-segment firmware ELF, the first segment 13 bytes long");

@@ -18,7 +18,7 @@ constexpr uint32_t kFunIe = 1 << 9;
 
 class GpioTest : public SimTest {};
 
-// Scenario CMP-21-S01 (docs/features/gpio.feature): GPIO unit test
+// Scenario CMP-21-S01 (docs/features/unit/gpio.feature): GPIO unit test
 // against a fake register file.  T01 is the pytest-bdd binding.
 
 TEST_F(GpioTest, CMP_21_S01_T02_flash_pin_is_refused_with_no_register_written) {
@@ -45,7 +45,7 @@ TEST_F(GpioTest, CMP_21_S01_T03_gpio2_output_writes_registers_in_order) {
   EXPECT_EQ(gpio_dir_af(2, 1, 1, 0), 0);
 }
 
-// Scenario CMP-21-S02 (unit/gpio_lib_printf.feature)
+// Scenario CMP-21-S02 (docs/features/unit/gpio.feature)
 
 struct PadRow { int gpio; uint32_t mux; };
 class GpioPadTable : public GpioTest, public ::testing::WithParamInterface<PadRow> {};

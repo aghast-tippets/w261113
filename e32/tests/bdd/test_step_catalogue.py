@@ -1,6 +1,6 @@
 """
 Static check, independent of the environment: every step of every
-top-level scenario (each Examples row rendered) matches exactly one step
+scenario pytest-bdd binds (each Examples row rendered) matches exactly one step
 definition.  Catches a missing step even where the scenario itself is
 skipped, and catches ambiguous patterns, whose winner would be arbitrary.
 """
@@ -11,13 +11,15 @@ import steps_acceptance  # noqa: F401  (registers the step definitions)
 import steps_build  # noqa: F401
 import steps_console  # noqa: F401
 import steps_gtest  # noqa: F401
-from support import FEATURES
+from support import FEATURES, feature_files, feature_name
 
 
 def rendered_steps():
-    for path in sorted(FEATURES.glob("*.feature")):
-        feature = FeatureParser(str(FEATURES), path.name).parse()
+    for path in feature_files():
+        feature = FeatureParser(str(FEATURES), feature_name(path)).parse()
         for name, template in feature.scenarios.items():
+            if "gtest" in template.tags:      # GoogleTest implements these
+                continue
             contexts = [c for ex in template.examples for c in ex.as_contexts()] or [{}]
             for ctx in contexts:
                 for st in template.render(ctx).steps:

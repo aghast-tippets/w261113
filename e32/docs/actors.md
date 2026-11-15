@@ -1,0 +1,71 @@
+# Actors
+
+Record. Every actor that interacts with e32, or has a stake in it. Process:
+[`bdd-framework.md`](bdd-framework.md) (v2.0).
+
+Types: **Primary** = initiates interactions to get value · **Supporting** =
+an external person or system e32 relies on · **Offstage** = has a stake but
+never interacts. Every Primary actor has a persona for Gherkin steps.
+
+IDs are permanent: the v1 IDs (`ACT-H*` for people, `ACT-S*` for systems)
+are kept.
+
+| ID | Actor | Type | Goal / interest | Personas (for Gherkin) |
+|---|---|---|---|---|
+| ACT-H1 | Firmware developer | Primary | Build, load and extend firmware quickly, without vendor SDKs. Writes, builds and loads e32 firmware; extends it with application code. Has C and Unix experience, as in Rubini's prerequisites. | "dana" |
+| ACT-H2 | Learner | Primary | Understand every step from reset to C, interrupts and faults. A student following the package to understand bare-metal ESP32, chapter by chapter, as Rubini's students did with the LPC1343 notes. | "lee" |
+| ACT-H3 | Bench operator / tester | Primary | Drive a running board interactively and prove it works. Connects a board, uses the serial monitor, runs the self test, and checks pins and faults on hardware. | "olga" |
+| ACT-H4 | Maintainer | Primary | Keep the package building, documented, traceable and released. Owns the package: toolchain pinning, documentation, verification status and releases. | "max" |
+| ACT-S1 | ESP32 boot ROM (Mask ROM firmware in the SoC) | Supporting | Loads the image from flash at `0x1000`, or over UART in download mode; checks the checksum; calls the entry point; prints its own boot lines on UART0. | — |
+| ACT-S2 | ESP32 SoC peripherals (Hardware) | Supporting | UART0, GPIO matrix, IO_MUX, interrupt matrix, timer groups, RTC_CNTL. The firmware reads and writes their registers. | — |
+| ACT-S3 | Xtensa LX6 CPU core (Hardware) | Supporting | Executes the code. Raises window, alloca, interrupt and fault exceptions through `VECBASE`. | — |
+| ACT-S4 | Host build machine (Computer) | Supporting | Runs the cross-compiler, `make`, `tools/mkimage` and the trace checker. | — |
+| ACT-S5 | Cross toolchain (Software) | Supporting | `xtensa-esp32-elf-gcc`/binutils, built by `tools/build-toolchain.sh` or supplied by the developer. | — |
+| ACT-S6 | esptool (Host software) | Supporting | The serial transport only: `load_ram` and `write_flash` through the ROM protocol. | — |
+| ACT-S7 | Serial terminal (Host software) | Supporting | `minicom` or similar, on the USB-serial port at 115200 8N1. | — |
+| ACT-S8 | QEMU (Espressif fork) (Emulator) | Supporting | Runs the real ESP32 boot ROM and the firmware without hardware. | — |
+| ACT-S9 | Peripheral interrupt sources (Hardware) | Supporting | For example UART0 RX, routed through the interrupt matrix to a CPU line. | — |
+| ACT-S10 | Board circuitry (Hardware) | Supporting | USB-serial bridge, BOOT (GPIO0) and EN buttons, optional LED on GPIO2, SPI flash on GPIO6–11. | — |
+
+No Offstage actors are recorded.
+
+## Retired
+
+| ID | Reason | Date |
+|---|---|---|
+
+## Roles
+
+| Role | Goal | Held by | Uses |
+|---|---|---|---|
+| Developer | Build and load firmware quickly, without vendor SDKs. | ACT-H1 | `make`, `make ram`, `make flash`, toolchain script |
+| Integrator | Add application code: interrupt handlers, time base, GPIO, console. | ACT-H1 | `irq.h`, `gpio.h`, `io.h` APIs |
+| Operator | Inspect and drive a running board interactively. | ACT-H2, ACT-H3 | mimmo commands over the serial console |
+| Tester | Prove the requirements, in QEMU and on hardware. | ACT-H3, ACT-H4 | `.feature` scenarios, self test, `make qemu` |
+| Learner | Understand every step from reset to C, interrupts and faults. | ACT-H2 | README, source comments, these docs |
+| Maintainer | Keep the package building, documented and traceable. | ACT-H4 | `tools/tracecheck.py`, requirement files |
+
+## Role ↔ epic involvement
+
+| Role | EP-01 Build | EP-02 Boot | EP-03 Console | EP-04 Monitor | EP-05 GPIO | EP-06 Exc/IRQ | EP-07 Faults | EP-08 Verification | EP-09 Docs |
+|---|---|---|---|---|---|---|---|---|---|
+| Developer | ● | ● | ○ | ○ | ○ | ○ | ● | ○ | ○ |
+| Integrator | ○ | | ● | | ● | ● | ● | | ○ |
+| Operator | | ○ | ● | ● | ● | | ● | ○ | |
+| Tester | ○ | ● | ● | ● | ● | ● | ● | ● | |
+| Learner | ○ | ● | ○ | ● | ○ | ● | ● | | ● |
+| Maintainer | ● | | | | | | | ● | ● |
+
+● primary, ○ secondary
+
+## Context diagram (text)
+
+    Developer ──make──▶ Host build machine ──gcc/ld──▶ e32.elf ──mkimage──▶ e32.bin
+                                              │
+                                    esptool (load_ram | write_flash)
+                                              ▼
+    Operator ◀──UART0 115200──▶ [ ESP32 boot ROM ──▶ e32 firmware ] ◀── interrupt sources
+                                    │                  │
+                                 Board: BOOT/EN    SoC peripherals, LX6 core
+                                              ▲
+                     Tester ──make qemu──▶ QEMU (real boot ROM)

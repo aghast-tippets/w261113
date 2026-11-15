@@ -29,17 +29,20 @@ where the compiler or linker already enforces the contract.
 ### IF-01 — Boot image format
 - **Type:** Interface
 - **EARS:** Ubiquitous
+- **Priority:** Must
 - **Statement:** The image passed from `mkimage` to the boot ROM shall consist of these parts, all little-endian:
   - an 8-byte header: magic `0xE9`, segment count (1–16), SPI mode, a byte with the flash size in the high nibble and the frequency in the low nibble, and a 32-bit entry address;
   - a 16-byte extended header: WP pin, 3 drive-strength bytes, a 16-bit chip ID, a minimum revision byte, 16-bit minimum and maximum full revisions, 4 reserved bytes and a hash-appended flag;
   - for each segment, a 32-bit load address, a 32-bit length that is a multiple of 4, and the data;
   - zero padding to 15 modulo 16, then a checksum byte equal to `0xEF` XORed with all segment data.
 - **Derives from:** SYS-04, SYS-05, SUB-BLD-04
+- **Rationale:** Needed to meet SYS-04 (Flash boot); SYS-05 (RAM boot); SUB-BLD-04 (Image conversion).
 - **Verified by:** VER-IF-01
 
 ### IF-02 — ROM-to-firmware hand-over
 - **Type:** Interface
 - **EARS:** Event-driven
+- **Priority:** Must
 - **Statement:** When the boot ROM has loaded every segment, it shall call the entry point, `call_start`. At that moment the firmware shall assume only the following:
   - its segments are in place;
   - UART0 is configured by the ROM;
@@ -47,29 +50,35 @@ where the compiler or linker already enforces the contract.
 
   It shall assume nothing about any other register, and shall never return to the ROM.
 - **Derives from:** SUB-BOOT-01, SUB-BOOT-03
+- **Rationale:** Needed to meet SUB-BOOT-01 (C environment); SUB-BOOT-03 (Inherit the console set-up).
 - **Verified by:** VER-IF-02
 
 ### IF-03 — Serial console protocol
 - **Type:** Interface
 - **EARS:** Ubiquitous
+- **Priority:** Must
 - **Statement:** The console shall use 115200 baud 8N1, no flow control, ASCII. The firmware sends CR LF for each newline. Input lines end with CR or LF, BS (`0x08`) or DEL (`0x7F`) erases, and accepted characters are echoed. The firmware prompts with `> `, answers malformed commands with `?? (h for help)`, and uses the output formats of SW-MON-02 and SW-FLT-02.
 - **Derives from:** SYS-06, SYS-07, SYS-10, SYS-19
+- **Rationale:** Needed to meet SYS-06 (Start-up banner and prompt); SYS-07 (Serial line parameters); SYS-10 (Execute monitor commands); SYS-19 (Fault report).
 - **Verified by:** VER-IF-03
 
 ### IF-04 — Host loader transport
 - **Type:** Interface
 - **EARS:** Event-driven
+- **Priority:** Must
 - **Statement:** When the board is in ROM download mode, the host shall drive the ROM's serial loader through esptool:
   - `load_ram` without the flasher stub, to load and run in RAM;
   - `write_flash` at `0x1000` with flash mode, frequency and size all set to `keep`.
 
   No other host tool shall be required to load the firmware.
 - **Derives from:** SYS-05, SYS-26, SYS-27
+- **Rationale:** Needed to meet SYS-05 (RAM boot); SYS-26 (Flash programming target); SYS-27 (RAM load target).
 - **Verified by:** VER-IF-04
 
 ### IF-05 — Vector table layout
 - **Type:** Interface
 - **EARS:** Ubiquitous
+- **Priority:** Must
 - **Statement:** `VECBASE` shall point to a 1 KB-aligned table with entry points at these offsets:
   - `0x000`/`0x040`: window overflow/underflow 4;
   - `0x080`/`0x0C0`: window overflow/underflow 8;
@@ -83,11 +92,13 @@ where the compiler or linker already enforces the contract.
 
   Each entry must fit before the next offset.
 - **Derives from:** SUB-EXC-01, SUB-EXC-03, SUB-EXC-05
+- **Rationale:** Needed to meet SUB-EXC-01 (Register-window spill and fill); SUB-EXC-03 (Interrupt context); SUB-EXC-05 (Route faults).
 - **Verified by:** VER-IF-05
 
 ### IF-06 — Interrupt frame layout
 - **Type:** Interface
 - **EARS:** Ubiquitous
+- **Priority:** Must
 - **Statement:** The frame passed from `_level1_handler` to `irq_dispatch` shall be 0x60 bytes, laid out as follows:
   - `a0`–`a15` at offsets `0x00`–`0x3C`;
   - `pc` (`EPC1`) at `0x40`, `ps` at `0x44`, `sar` at `0x48`;
@@ -96,11 +107,13 @@ where the compiler or linker already enforces the contract.
 
   This layout is defined once, in `include/xtensa.h`, for both languages.
 - **Derives from:** SUB-EXC-03
+- **Rationale:** Needed to meet SUB-EXC-03 (Interrupt context).
 - **Verified by:** VER-IF-06
 
 ### IF-07 — Panic frame layout
 - **Type:** Interface
 - **EARS:** Ubiquitous
+- **Priority:** Must
 - **Statement:** `panic_frame` shall be 0xA0 bytes, laid out as follows:
   - the kind at `0x00`;
   - `a0`–`a15` at `0x04`–`0x40`;
@@ -110,11 +123,13 @@ where the compiler or linker already enforces the contract.
   - `epc1`–`epc7` at `0x6C`–`0x84`;
   - `eps2`–`eps7` at `0x88`–`0x9C`.
 - **Derives from:** SUB-FLT-01, SUB-FLT-02
+- **Rationale:** Needed to meet SUB-FLT-01 (Capture state); SUB-FLT-02 (Report).
 - **Verified by:** VER-IF-06
 
 ### IF-08 — Linker symbol contract
 - **Type:** Interface
 - **EARS:** Ubiquitous
+- **Priority:** Must
 - **Statement:** The linker script shall export the following, and the startup and vector code shall use only these names for the memory layout:
   - `_vector_table`, equal to `0x40080000`;
   - the entry point `call_start`;
@@ -124,11 +139,13 @@ where the compiler or linker already enforces the contract.
 
   `vectors.S` defines `_panic_stack_top`.
 - **Derives from:** SUB-BLD-02, SUB-BOOT-01
+- **Rationale:** Needed to meet SUB-BLD-02 (Memory layout); SUB-BOOT-01 (C environment).
 - **Verified by:** VER-IF-07
 
 ### IF-09 — Interrupt API
 - **Type:** Interface
 - **EARS:** Ubiquitous
+- **Priority:** Must
 - **Statement:** `include/irq.h` shall offer:
   - `irq_init(void)`;
   - `irq_map(int source, int irq)`;
@@ -142,11 +159,13 @@ where the compiler or linker already enforces the contract.
 
   Handlers have the signature `void fn(int irq, void *arg)`, run with level-1 interrupts masked, and must not use floating point.
 - **Derives from:** SYS-16, SYS-17, SUB-EXC-04
+- **Rationale:** Needed to meet SYS-16 (Interrupt handling); SYS-17 (Tick); SUB-EXC-04 (Routing and dispatch).
 - **Verified by:** VER-IF-08
 
 ### IF-10 — GPIO API
 - **Type:** Interface
 - **EARS:** Ubiquitous
+- **Priority:** Must
 - **Statement:** `include/gpio.h` shall offer:
   - `GPIO_NR`, `GPIO_PORT` and `GPIO_BIT`;
   - `gpio_init`;
@@ -156,11 +175,13 @@ where the compiler or linker already enforces the contract.
 
   This matches the LPC1343 package's API, with AF0 meaning GPIO.
 - **Derives from:** SYS-12, SYS-13, SYS-14, SUB-GPIO-01
+- **Rationale:** Needed to meet SYS-12 (Drive a GPIO output); SYS-13 (Read a GPIO input); SYS-14 (Refuse dangerous pins); SUB-GPIO-01 (Pin configuration and access).
 - **Verified by:** VER-IF-09
 
 ### IF-11 — Console API
 - **Type:** Interface
 - **EARS:** Ubiquitous
+- **Priority:** Must
 - **Statement:** `include/io.h` shall offer:
   - `serial_setup`;
   - `putc`, and `puts` (which adds no newline);
@@ -172,18 +193,22 @@ where the compiler or linker already enforces the contract.
   - `mimmo`;
   - the `CPU_HZ` constant.
 - **Derives from:** SYS-06, SYS-10, SUB-CON-01, SUB-CON-04
+- **Rationale:** Needed to meet SYS-06 (Start-up banner and prompt); SYS-10 (Execute monitor commands); SUB-CON-01 (Output); SUB-CON-04 (Formatted output).
 - **Verified by:** VER-IF-10
 
 ### IF-12 — Interrupt matrix registers
 - **Type:** Interface
 - **EARS:** Ubiquitous
+- **Priority:** Must
 - **Statement:** The firmware shall route peripheral source `s` (0–68) to the PRO CPU by writing a CPU line number (0–31) to `0x3FF00104 + 4·s`. UART0 is source 34. Writing an internal line (6, 7, 11, 15, 16 or 29) disconnects the source.
 - **Derives from:** SUB-EXC-04, SUB-CON-03
+- **Rationale:** Needed to meet SUB-EXC-04 (Routing and dispatch); SUB-CON-03 (Interrupt-driven receive).
 - **Verified by:** VER-IF-11
 
 ### IF-13 — Peripheral register map
 - **Type:** Interface
 - **EARS:** Ubiquitous
+- **Priority:** Must
 - **Statement:** The firmware shall access peripherals only at the addresses defined in `include/regs.h`:
   - UART0 at `0x3FF40000` (FIFO `0x00`, INT_ST `0x08`, INT_ENA `0x0C`, INT_CLR `0x10`, CLKDIV `0x14`, STATUS `0x1C`, CONF0 `0x20`, CONF1 `0x24`);
   - GPIO at `0x3FF44000`;
@@ -191,28 +216,35 @@ where the compiler or linker already enforces the contract.
   - RTC_CNTL at `0x3FF48000` (OPTIONS0 `0x00`, WDTCONFIG0 `0x8C`, WDTWPROTECT `0xA4`);
   - TIMG0 and TIMG1 at `0x3FF5F000` and `0x3FF60000` (WDTCONFIG0 `0x48`, WDTWPROTECT `0x64`).
 - **Derives from:** SUB-CON-01, SUB-GPIO-01, SUB-BOOT-02, SUB-FLT-03
+- **Rationale:** Needed to meet SUB-CON-01 (Output); SUB-GPIO-01 (Pin configuration and access); SUB-BOOT-02 (Watchdogs off); SUB-FLT-03 (Reboot).
 - **Verified by:** VER-IF-12
 
 ### IF-14 — Watchdog write-protect protocol
 - **Type:** Interface
 - **EARS:** Event-driven
+- **Priority:** Must
 - **Statement:** When software changes a watchdog's configuration, it shall first write `0x50D83AA1` to that watchdog's `WPROTECT` register, then write the configuration, then write any other value (0) to `WPROTECT` to lock it again.
 - **Derives from:** SUB-BOOT-02
+- **Rationale:** Needed to meet SUB-BOOT-02 (Watchdogs off).
 - **Verified by:** VER-IF-13
 
 ### IF-15 — Windowed-ABI save areas
 - **Type:** Interface
 - **EARS:** Ubiquitous
+- **Priority:** Must
 - **Statement:** The window handlers and the compiler-generated code shall share these stack conventions:
   - a frame's `a0`–`a3` are saved in the 16 bytes below its callee's stack pointer;
   - a call8 frame's `a4`–`a7` (or a call12 frame's `a4`–`a11`) are saved at the bottom of its caller's frame, whose stack pointer is read from `[sp − 12]`;
   - the 16 bytes below an interrupted stack pointer are left untouched by interrupt entry.
 - **Derives from:** SUB-EXC-01, SUB-EXC-03
+- **Rationale:** Needed to meet SUB-EXC-01 (Register-window spill and fill); SUB-EXC-03 (Interrupt context).
 - **Verified by:** VER-IF-14
 
 ### IF-16 — Emulator invocation
 - **Type:** Interface
 - **EARS:** Ubiquitous
+- **Priority:** Must
 - **Statement:** The verification environment shall start QEMU as `qemu-system-xtensa -nographic -machine esp32 -drive file=flash.img,if=mtd,format=raw`. For download mode it shall add `-global driver=esp32.gpio,property=strap_mode,value=0x0f`, and put the console on stdio (`-serial stdio`) or TCP (`-serial tcp::PORT,server,nowait`).
 - **Derives from:** SYS-24, SUB-VEN-01
+- **Rationale:** Needed to meet SYS-24 (Emulator boot); SUB-VEN-01 (Emulated target).
 - **Verified by:** VER-IF-15
