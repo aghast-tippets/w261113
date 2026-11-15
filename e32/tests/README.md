@@ -5,7 +5,7 @@ Run everything, keep the results and regenerate the matrix:
     tests/run_all.sh          # from the e32 directory
 
 JUnit XML goes to `tests/results/`. `tools/tracecheck.py` turns it into
-`docs/test-results.md`.
+`docs/test-results.md` and the Phase 5 audit `docs/verification-report.md`.
 
 ## pytest-bdd (feature files)
 
